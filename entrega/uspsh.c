@@ -14,9 +14,12 @@
 //Usado pelo chmod
 #include <sys/stat.h>
 
+//Usado pelo waitpid
+#include <sys/wait.h>
+
 #define MACHINE_NAME_MAX 16
 #define PATH_NAME_MAX 1024
-#define MAX_TOKEN_QTD 25 //Improvável, mas vai que né?
+#define MAX_TOKEN_QTD 20 //Improvável, mas vai que né?
 
 #define IFS "\n\t " //IFS padrão (talvez num shell de verdade isso seria uma variável...)
 
@@ -45,7 +48,7 @@ int main(){
         get_shell_prompt(machineName, currentDirectory, promptMSG, sizeof(promptMSG));
         get_user_command(&commandLineInput, promptMSG);
         int numTokens = extract_tokens_from_line(commandLineInput, commandTokens);
-        if (numTokens > 0) { //Provavelmente o usuário só digitou Enter
+        if (numTokens > 0) { //Provavelmente o usuário só digitou Enter, então evitamos o processamento disso.
             command_handler(commandTokens[0], commandTokens);
         }
         
@@ -63,7 +66,8 @@ int main(){
 void change_directory(const char*);
 void whoami();
 void change_permissions(const char*, const char*);
-int execute_external_command(char*, char*[]);
+int  execute_external_command(char*, char*[]);
+void close_uspsh();
 void print_error(char *);
 
 void command_handler(char* command, char* arguments[]){
@@ -74,7 +78,9 @@ void command_handler(char* command, char* arguments[]){
         whoami();
     } else if (strcmp(command, "chmod") == 0){
         change_permissions(arguments[1], arguments[2]);
-    } else {
+    } else if (strcmp(command, "exit") == 0){
+        close_uspsh();
+    }else{
         int executionResult = execute_external_command(command, arguments);
         if (executionResult != 0) { print_error(command); }
     }
@@ -92,18 +98,43 @@ void whoami(){
     struct passwd *pw = getpwuid(getuid());
     printf("%s\n", (pw->pw_name));
 }
-void change_permissions(const char* pathname, const char* mode){
+void change_permissions(const char* mode, const char* pathname){
     int permissions = strtol(mode, NULL, 8);
     chmod(pathname, permissions);
+}
+
+void close_uspsh(){
+    printf("logout\n"); //Copiei isso do bash original, mas só por que estava brincando de criar vários shells dentro de shells
+    exit(0);
 }
 
 /*
 >>>>>>>>>>>>>>>>>>>>>>>>> EXECUÇÃO DE COMANDOS <<<<<<<<<<<<<<<<<<<<<<<<<
 */
 
+
+//Adaptado de Tanenbaum 4ª ed, pag: 38
 int execute_external_command(char* command, char* arguments[]){
-    //Aqui terá a implementação do fork exec e wait
-    return 0;
+    int pid = fork(); //0 é o processo filho
+
+    
+    if (pid == 0){ //Processo filho
+        execve(command, arguments, 0); //Poderiamos ter usado execvp para permitir o input de ls ao invés de /bin/ls
+                                       //Mas considerando que reescrevemos alguns comandos, acho mais válido usar execve assim como no Tanenbaum. 
+        
+        exit(1); //Garantindo que o processo filho seja encerrado
+                 //Caso ele nem sequer possa ser executado.
+
+    }else{//Processo pai
+        int status;
+        waitpid(pid, &status, 0);
+        if (WIFEXITED(status)) {
+            return WEXITSTATUS(status); // Retorna código de saída do filho
+                                        // Detecta se o cara não digitou o comando de forma errada
+        } 
+    }
+    return 0; //Neste caso, provavelmente o processo filho terminou mal
+              //O objetivo era silenciar o Warning.
 }
 
 /*
@@ -124,7 +155,7 @@ void get_current_directory(char *currentDirectory, int size) {
 
 void get_user_command(char **inputBuffer, char *inputMSG) {
     *inputBuffer = readline(inputMSG);
-    if (*inputBuffer && **inputBuffer) { //Impedir que um input vazio seja salvo no history
+    if (*inputBuffer && **inputBuffer) { //Impedir que um input vazio ou null seja salvo no history
         add_history(*inputBuffer);
     }
 }
@@ -150,5 +181,5 @@ int extract_tokens_from_line(char* userInput, char* tokens[]){
 */
 
 void print_error(char* commandName) {
-    printf("O comando %s não foi reconhecido\n", commandName);
+    printf("O comando %s não foi achado\n", commandName);
 }
