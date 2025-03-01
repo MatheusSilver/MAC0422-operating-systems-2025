@@ -28,18 +28,19 @@ void get_hostname(char *hostname, int size) {
     gethostname(hostname, size);
 }
 
-void print_shell_prompt(const char *hostname, const char *currentDirectory) {
-    printf("[%s:%s]$ ", hostname, currentDirectory);
+void get_shell_prompt(const char *hostname, const char *currentDirectory, char* msgBuffer, int bufferSize) {
+    snprintf(msgBuffer, bufferSize, "[%s:%s]$ ", hostname, currentDirectory);
 }
 
 void get_current_directory(char *currentDirectory, int size) {
     getcwd(currentDirectory, size);
 }
 
-
-void get_user_command(char **inputBuffer) {
-    size_t inputBufferSize = 0; 
-    getline(inputBuffer, &inputBufferSize, stdin);
+void get_user_command(char **inputBuffer, char *inputMSG) {
+    *inputBuffer = readline(inputMSG);
+    if (*inputBuffer && **inputBuffer) { //Impedir que um input vazio seja salvo no history
+        add_history(*inputBuffer);
+    }
 }
 
 //Returns numTokens
@@ -62,21 +63,23 @@ int extract_tokens_from_line(char* userInput, char* tokens[]){
 int main(){
     char *commandLineInput = NULL;
     char *commandTokens[MAX_TOKEN_QTD];
+    char *promptMSG[PATH_NAME_MAX + MACHINE_NAME_MAX + 6]; //Na pratica são 5, mas estamos contando o \0 no final.
 
     //Setup inicial
     get_hostname(machineName, sizeof(machineName));
     get_current_directory(currentDirectory, sizeof(currentDirectory));
     
     while (1){
-        print_shell_prompt(machineName, currentDirectory);
-        get_user_command(&commandLineInput);
+        get_shell_prompt(machineName, currentDirectory, promptMSG, sizeof(promptMSG));
+        get_user_command(&commandLineInput, promptMSG);
         int numTokens = extract_tokens_from_line(commandLineInput, commandTokens);
         if (numTokens > 0) { //Provavelmente o usuário só digitou Enter
             commandHandler(commandTokens[0], commandTokens);
         }
+
+        free(commandLineInput);
     }
 
-    free(commandLineInput);
     exit_function();
     
 }
