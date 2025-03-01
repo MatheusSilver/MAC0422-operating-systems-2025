@@ -1,23 +1,13 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -std=c11 -g
+CFLAGS = -Wall -Wextra
+LDFLAGS = -lreadline
 OBJ_USPSH = uspsh.o
-OBJ_EP1 = ep1.o
 
-# Regra padrão para compilar todos os executáveis
-all: uspsh ep1
+all: uspsh
 
-# Compila o uspsh
-uspsh: $(uspsh.o)
-	$(CC) $(CFLAGS) -o uspsh $(OBJ_USPSH)
+uspsh: $(OBJ_USPSH)
+	$(CC) $(CFLAGS) -o $@ $(OBJ_USPSH) $(LDFLAGS)
+	rm -f uspsh.o
 
-# Compila o ep1
-ep1: $(OBJ_EP1)
-	$(CC) $(CFLAGS) -o ep1 $(OBJ_EP1) -lpthread
-
-# Gera os arquivos .o para cada código-fonte
-%.o: %.c
-	$(CC) $(CFLAGS) -c $< -o $@
-
-# Limpeza dos arquivos gerados
 clean:
-	rm -f *.o uspsh ep1
+	rm -f uspsh $(OBJ_USPSH)
