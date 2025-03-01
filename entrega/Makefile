@@ -1,13 +1,16 @@
 CC = gcc
-CFLAGS = -Wall -Wextra
+CFLAGS = -Wall -Wextra -pedantic
 LDFLAGS = -lreadline
 OBJ_USPSH = uspsh.o
+EXE_USPSH = uspsh
 
 all: uspsh
 
 uspsh: $(OBJ_USPSH)
 	$(CC) $(CFLAGS) -o $@ $(OBJ_USPSH) $(LDFLAGS)
-	rm -f uspsh.o
+
+run_sh: $(EXE_USPSH)
+	./$(EXE_USPSH)
 
 clean:
-	rm -f uspsh $(OBJ_USPSH)
+	rm -f $(EXE_USPSH) $(OBJ_USPSH)
