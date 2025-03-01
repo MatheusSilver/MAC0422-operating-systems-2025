@@ -1,11 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-//Usado para as syscalls
+//Usado para as syscalls (menos chmod)
 #include <unistd.h>
-
-//Usado para separação de tokens e conversão do input para chmod
-#include <string.h>
 
 //Usado na captura de commandos e funcionalidade do histórico.
 #include <readline/history.h>
@@ -31,7 +28,7 @@ void get_hostname(char *, int);
 void get_shell_prompt(const char *, const char *, char *, int);
 void get_current_directory(char *, int);
 void get_user_command(char **, char *);
-int extract_tokens_from_line(char *, char *[]);
+int  extract_tokens_from_line(char *, char *[]);
 void command_handler(char *, char *[]);
 
 
