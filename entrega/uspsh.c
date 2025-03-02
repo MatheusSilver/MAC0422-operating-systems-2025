@@ -18,7 +18,7 @@
 #include <sys/wait.h>
 
 #define MACHINE_NAME_MAX 16
-#define PATH_NAME_MAX 1024
+#define PATH_NAME_MAX 4096 //No Windows, o limite é 260, mas no Linux o coiso aparentemente é 4096, na dúvida, vou assumir o padrão do Linux
 #define MAX_TOKEN_QTD 20 //Improvável, mas vai que né?
 
 #define IFS "\n\t " //IFS padrão (talvez num shell de verdade isso seria uma variável...)
