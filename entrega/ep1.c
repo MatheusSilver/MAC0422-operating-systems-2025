@@ -30,6 +30,8 @@ void set_process_arrival_time(SimulatedProcessData *, const char *);
 void set_process_execution_time(SimulatedProcessData *, const char *);
 void set_process_deadline(SimulatedProcessData *, const char *);
 int get_array_of_processes(FILE *, SimulatedProcessData*[]);
+void mergeSort(SimulatedProcessData *[], int, int);
+
 
 int main(int args, char* argv[]){
     if (args != 2){
@@ -43,6 +45,7 @@ int main(int args, char* argv[]){
     if (open_file(&fileDescriptor, argv[1], "r")){exit(-1);}
 
     int numProcesses = get_array_of_processes(fileDescriptor, processList);
+    mergeSort(processList, 0, numProcesses-1); //-1 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
     
     //Testando, lembrar de tirar depois.
     for (int i = 0; i < numProcesses; i++) {
@@ -151,4 +154,61 @@ void set_process_execution_time(SimulatedProcessData * process, const char * exe
 
 void set_process_deadline(SimulatedProcessData * process, const char * deadline){
     process->deadline = atoi(deadline);
+}
+
+/*
+>>>>>>>>>>>>>>>>>>>>>>>>> UTILIDADES GERAIS <<<<<<<<<<<<<<<<<<<<<<<<<
+*/
+
+//O objetivo é ordenar o arquivo por ordem de chegada, e assim, o FCFS
+//Já fica praticamente pronto, e também facilita a verificação dos demais também.
+
+//Usa-se o MergeSort pra manter a estabilidade nos casos de dois processos terem o mesmo 
+//Arrival time, mas um ter sido colocado primeiro que o outro no arquivo trace
+
+void merge(SimulatedProcessData* arr[], int left, int mid, int right) {
+    int leftNum = mid - left + 1;
+    int rightNum = right - mid;
+
+    SimulatedProcessData** leftArr = (SimulatedProcessData**)malloc(leftNum * sizeof(SimulatedProcessData*));
+    SimulatedProcessData** rightArr = (SimulatedProcessData**)malloc(rightNum * sizeof(SimulatedProcessData*));
+
+    for (int i = 0; i < leftNum; i++) {
+        leftArr[i] = arr[left + i];
+    }
+    for (int j = 0; j < rightNum; j++) {
+        rightArr[j] = arr[mid + 1 + j];
+    }
+
+    int i = 0, j = 0, k = left;
+    while (i < leftNum && j < rightNum) {
+        if (leftArr[i]->arrival <= rightArr[j]->arrival) {
+            arr[k] = leftArr[i++];
+        } else {
+            arr[k] = rightArr[j++];
+        }
+        k++;
+    }
+
+    while (i < leftNum) {
+        arr[k++] = leftArr[i++];
+    }
+
+    while (j < rightNum) {
+        arr[k++] = rightArr[j++];
+    }
+
+    // A única diferença disso pra versão em Java é que o c não tem coletor de lixo.
+    // As vezes isso é bom, mas as vezes é um saco...
+    free(leftArr);
+    free(rightArr);
+}
+
+void mergeSort(SimulatedProcessData* arr[], int left, int right) {
+    if (left < right) {
+        int mid = left + (right - left) / 2;
+        mergeSort(arr, left, mid);          
+        mergeSort(arr, mid + 1, right);
+        merge(arr, left, mid, right);
+    }
 }
