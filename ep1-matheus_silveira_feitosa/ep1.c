@@ -1,3 +1,6 @@
+#define _GNU_SOURCE //Nescessário para poder usar o tryjoin e também o set_affinity
+                    //Deve ser sempre colocado no topo.
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -10,11 +13,15 @@
 #define false 0
 
 //Honestamente, acho que essa forma é bem mais legal do que usar um nome gigante.
-#define pthread_mutex_lock(mutex)   P(mutex);
-#define pthread_mutex_unlock(mutex) V(mutex);
+#define P(mutex) pthread_mutex_lock(&(mutex))
+#define V(mutex) pthread_mutex_unlock(&(mutex))
 
+#define MAX_CONTEXT_SWITCH_ORDER 4 //No pior caso teremos no máximo 119 trocas de contexto
+                                   //Então podemos definir o print com 3 digitos + \0
+                                   //Exemplo disso, é o caso onde dois processos chegam 
+                                   //no instante 0 e tem ambos burstTime de 60 segundos.
 #define MAX_PROCESS_NAME 33
-#define MAX_LINE_SIZE 50
+#define MAX_LINE_SIZE 1000
 //Nome = 32 + 3*9 (número de 3 digitos) + 3 espaços + \0 = 45
 //Só pra garantir, arrendondamos para 50
 
@@ -26,17 +33,23 @@ pthread_mutex_t writeFileMutex = PTHREAD_MUTEX_INITIALIZER;
 
 typedef struct {
     char name[MAX_PROCESS_NAME];
-    double arrival;
-    double burstTime;
-    double remainingTime;
-    double deadline;
+    int arrival;
+    int burstTime;
+    int deadline;
+    int remainingTime; //Assumimos que o tempo "extra" do ponto flutuante vem da demora pra trocar
+                       //contexto, escrever em arquivo, ou outras coisas extras que são feitas para cada processo.
 } SimulatedProcessData;
 
 typedef struct {
     pthread_mutex_t mutex;
     pthread_cond_t cond;
-    int available_cores;
+    int availableCores;
 } CoreUnityController;
+//Gambiarra adotada pois não pode usar semaphore.h
+//A forma inicial que havia pensando era só inicializar um 
+//sem com o número de availableCores e então, o P iria ser
+//executado até que availableCores = 0 indicando que não
+//tem mais cores a serem utilizados.
 
 //Lembrar de organizar isso depois.
 int  open_file(FILE **, char*, char *);
@@ -50,9 +63,19 @@ void set_process_deadline(SimulatedProcessData *, const char *);
 int  get_array_of_processes(FILE *, SimulatedProcessData*[]);
 void mergeSort(SimulatedProcessData *[], int, int);
 void FCFS(SimulatedProcessData *[], int);
-double get_elapsed_time(double startTime);
+double get_elapsed_time_from(double startTime);
 double get_current_time();
+void init_core_unity_controller(CoreUnityController *);
+void join_threads(pthread_t *, int *, int, int);
+int find_available_thread(int *, int);
+void busy_wait_until(double);
+int is_running(double, double);
+void* simula_processo_FCFS(void *);
+void finish_process(SimulatedProcessData *, double);
+void write_context_switches_quantity();
 
+double INITIAL_SIMULATION_TIME; //Variável global READ_ONLY
+unsigned int contextSwitches = 0;
 FILE *outputFile;
 
 //Essas variáveis são definidas uma vez e usadas apenas para leitura no decorrer do código
@@ -75,10 +98,11 @@ int main(int args, char* argv[]){
     
     //mergeSort por tempos de chegada
     mergeSort(processList, 0, numProcesses-1);
-
+    
     FCFS(processList, numProcesses);
     
     close_file(traceFile);
+    close_file(outputFile);
 
     exit(0);
 }
@@ -95,27 +119,29 @@ void FCFS(SimulatedProcessData * processList[], int numProcesses){
     pthread_t * workThreads = malloc(AVAILABLE_CORES * sizeof(pthread_t));
     int *occupiedThreads   = calloc(AVAILABLE_CORES, sizeof(int));
     CoreUnityController threadController;
-    init_core_unity_controller(threadController);
+    init_core_unity_controller(&threadController);
 
     //Esse é o tempo 0 da Simulação a ser adotado como referência.
-    double INITIAL_SIMULATION_TIME = get_current_time();
+    INITIAL_SIMULATION_TIME = get_current_time();
     //Vai falar qual processo é o próximo a rodar na lista de processos.
     int nextProcessTracker = 0;
     
     while (nextProcessTracker < numProcesses){
         join_threads(workThreads, occupiedThreads, AVAILABLE_CORES, false);
+        //Idealmente fariamos uma fila, mas como esse caso é o mais simples
+        //Não precisamos criar uma estrutura a parte só pra isso.
         SimulatedProcessData *nextProcess = processList[nextProcessTracker];
-        //Até dá pra travar ele aqui já que em tese, não tem nenhum outro processo pra rodar no momento
+        //Até dá pra travar ele aqui já que, em tese, não tem nenhum outro processo pra rodar no momento
         //Se o próximo da fila não estiver pronto, certamente não vai ser o cara depois dele que vai estar.
-        while (nextProcess->arrival > get_elapsed_time(INITIAL_SIMULATION_TIME));
-        
+        while (nextProcess->arrival > get_elapsed_time_from(INITIAL_SIMULATION_TIME));
         //Espera que haja pelo menos uma thread livre pra poder executar
+
         P(threadController.mutex);
-        while (threadController.available_cores <= 0) {
+        while (threadController.availableCores <= 0) {
             pthread_cond_wait(&threadController.cond, &threadController.mutex);
         }
-        threadController.available_cores--; // Reserva o núcleo
-        V(&threadController.mutex);
+        threadController.availableCores--;
+        V(threadController.mutex);
 
         int threadSlot = find_available_thread(occupiedThreads, AVAILABLE_CORES);
         if (threadSlot != -1){
@@ -125,29 +151,42 @@ void FCFS(SimulatedProcessData * processList[], int numProcesses){
             pthread_create(&workThreads[threadSlot], NULL, simula_processo_FCFS, args);
             occupiedThreads[threadSlot] = 1;
             nextProcessTracker++;
-        }
-
+        }   
     }
-
+    
     join_threads(workThreads, occupiedThreads, AVAILABLE_CORES, true);
     free(workThreads);
     free(occupiedThreads);
+
+    write_context_switches_quantity();
 }
 
 void* simula_processo_FCFS(void *args) {
-    void **args = (void**) arg;
-    CoreUnityController *threadController = (CoreUnityController*) args[0];
-    SimulatedProcessData *currentProcess = (SimulatedProcessData*) args[1];
-    double endTime = get_current_time() + p->burstTime;
+    CoreUnityController *threadController = ((void**)args)[0];
+    SimulatedProcessData *currentProcess = ((void**)args)[1];
+    
+    double endTime = currentProcess->burstTime;
     busy_wait_until(endTime);
+    endTime = get_current_time() - INITIAL_SIMULATION_TIME;
+    finish_process(currentProcess, endTime);
 
-    P(&threadController->mutex);
-    threadController->available_cores++;
+    P(threadController->mutex);
+    threadController->availableCores++;
     pthread_cond_signal(&threadController->cond);
-    V(&threadController->mutex);
+    V(threadController->mutex);
     free(args);
-    return;
+    return NULL;
 }
+
+/*
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> SRTN <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+*/
+
+
+
+/*
+>>>>>>>>>>>>>>>>>>>>>>>> Escalonamento por Prioridade <<<<<<<<<<<<<<<<<<<<<<<<<
+*/
 
 int find_available_thread(int *occupiedThreads, int num_threads) {
     for (int i = 0; i < num_threads; i++) {
@@ -156,6 +195,8 @@ int find_available_thread(int *occupiedThreads, int num_threads) {
         }
     }
     return -1; // Nenhuma thread disponível
+               // Se de alguma forma chegar nisso, 
+               // É porque algo deu MUITO errado com os semáforos.
 }
 
 void join_threads(pthread_t *workThreads, int *occupiedThreads, int num_threads, int force) {
@@ -232,7 +273,7 @@ void set_process_deadline(SimulatedProcessData * process, const char * deadline)
 void init_core_unity_controller(CoreUnityController *controller) {
     pthread_mutex_init(&controller->mutex, NULL);
     pthread_cond_init(&controller->cond, NULL);
-    controller->available_cores = AVAILABLE_CORES;
+    controller->availableCores = AVAILABLE_CORES;
 }
 
 
@@ -286,20 +327,32 @@ double get_current_time() {
 }
 
 
-double get_elapsed_time(double startTime) { return get_current_time() - startTime; }
+double get_elapsed_time_from(double startTime) { return get_current_time() - startTime; }
 
-int is_running(double startTime, double endTime)  { return get_elapsed_time(startTime) <= endTime; } 
+int is_running(double startTime, double endTime)  { return get_elapsed_time_from(startTime) < endTime; } 
 
 void finish_process(SimulatedProcessData * process, double finishTime){
     char outputLine[MAX_LINE_SIZE];
-    int deadlineMet = process->deadline <= finishTime ? true : false;
-    double clockTime = finishTime - process->arrival;
-    snprintf(outputLine, MAX_LINE_SIZE, "%s %lf %lf %d", process->name, clockTime, finishTime, deadlineMet);
+
+    //Quase 100% das vezes, arredonda pra baixo, mas só pra garantir né.
+    int roundedFinishTime = (int)(finishTime + 0.5);
+    
+    int deadlineMet = process->deadline >= roundedFinishTime ? true : false;
+    int clockTime = roundedFinishTime - process->arrival;
+    snprintf(outputLine, MAX_LINE_SIZE, "%s %d %d %d", process->name, clockTime, roundedFinishTime, deadlineMet);
     
     //Só pra garantir que nenhum par de threads tente escrever no arquivo ao mesmo tempo.
     P(writeFileMutex);
     write_next_line(outputFile, outputLine);
     V(writeFileMutex);
+}
+
+void write_context_switches_quantity(){
+    char outputLine[MAX_CONTEXT_SWITCH_ORDER];
+    snprintf(outputLine, MAX_CONTEXT_SWITCH_ORDER, "%d", contextSwitches);
+
+    //Não precisa de mutex porque esse cara só roda depois de todas as threads terem sido terminadas.
+    write_next_line(outputFile, outputLine);
 }
 
 

@@ -66,7 +66,7 @@ int main(){
 void change_directory(const char*);
 void whoami();
 void change_permissions(const char*, const char*);
-int  execute_external_command(char*, char*[]);
+void execute_external_command(char*, char*[]);
 void close_uspsh();
 void print_error(char *);
 
@@ -81,8 +81,7 @@ void command_handler(char* command, char* arguments[]){
     } else if (strcmp(command, "exit") == 0){
         close_uspsh();
     }else{
-        int executionResult = execute_external_command(command, arguments);
-        if (executionResult != 0) { print_error(command); }
+        execute_external_command(command, arguments);
     }
 }
 
@@ -112,9 +111,7 @@ void close_uspsh(){
 >>>>>>>>>>>>>>>>>>>>>>>>> EXECUÇÃO DE COMANDOS <<<<<<<<<<<<<<<<<<<<<<<<<
 */
 
-
-//Adaptado de Tanenbaum 4ª ed, pag: 38
-int execute_external_command(char* command, char* arguments[]){
+void execute_external_command(char* command, char* arguments[]){
     int pid = fork(); //0 é o processo filho
 
     
@@ -122,19 +119,15 @@ int execute_external_command(char* command, char* arguments[]){
         execve(command, arguments, 0); //Poderiamos ter usado execvp para permitir o input de ls ao invés de /bin/ls
                                        //Mas considerando que reescrevemos alguns comandos, acho mais válido usar execve assim como no Tanenbaum. 
         
-        exit(1); //Garantindo que o processo filho seja encerrado
-                 //Caso ele nem sequer possa ser executado.
+        print_error(command);          //Só é impresso se o execve falhar
+        
+        exit(-1);                      //Garantindo que o processo filho seja encerrado com erro -1
+                                       //Caso ele nem sequer possa ser executado.
 
-    }else{//Processo pai
+    }else{ //Processo pai
         int status;
         waitpid(pid, &status, 0);
-        if (WIFEXITED(status)) {
-            return WEXITSTATUS(status); // Retorna código de saída do filho
-                                        // Detecta se o cara não digitou o comando de forma errada
-        } 
     }
-    return 0; //Neste caso, provavelmente o processo filho terminou mal
-              //O objetivo era silenciar o Warning.
 }
 
 /*
