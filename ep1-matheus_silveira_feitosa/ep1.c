@@ -67,12 +67,13 @@ double get_elapsed_time_from(double startTime);
 double get_current_time();
 void init_core_unity_controller(CoreUnityController *);
 void join_threads(pthread_t *, int *, int, int);
-int find_available_thread(int *, int);
+long find_available_thread(int *, int);
 void busy_wait_until(double);
 int is_running(double, double);
 void* simula_processo_FCFS(void *);
 void finish_process(SimulatedProcessData *, double);
 void write_context_switches_quantity();
+void allocate_cpu(long);
 
 double INITIAL_SIMULATION_TIME; //Variável global READ_ONLY
 unsigned int contextSwitches = 0;
@@ -143,11 +144,13 @@ void FCFS(SimulatedProcessData * processList[], int numProcesses){
         threadController.availableCores--;
         V(threadController.mutex);
 
-        int threadSlot = find_available_thread(occupiedThreads, AVAILABLE_CORES);
+        long threadSlot = find_available_thread(occupiedThreads, AVAILABLE_CORES);
         if (threadSlot != -1){
-            void **args = malloc(2 * sizeof(void*));
+            void **args = malloc(3 * sizeof(void*));
             args[0] = &threadController;
             args[1] = nextProcess;
+            args[2] = (void*)threadSlot; //Esqueci que int é 4 bytes.
+                                        
             pthread_create(&workThreads[threadSlot], NULL, simula_processo_FCFS, args);
             occupiedThreads[threadSlot] = 1;
             nextProcessTracker++;
@@ -164,6 +167,8 @@ void FCFS(SimulatedProcessData * processList[], int numProcesses){
 void* simula_processo_FCFS(void *args) {
     CoreUnityController *threadController = ((void**)args)[0];
     SimulatedProcessData *currentProcess = ((void**)args)[1];
+    long chosenCPU = (long)((void**)args)[2];  //Lado bom de saber Assembly é economizar tempo com essas bizarrices...
+    allocate_cpu(chosenCPU);
     
     double endTime = currentProcess->burstTime;
     busy_wait_until(endTime);
@@ -182,14 +187,30 @@ void* simula_processo_FCFS(void *args) {
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> SRTN <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 */
 
+void SRTN(SimulatedProcessData * processList[], int numProcesses){
+    pthread_t * workThreads = malloc(AVAILABLE_CORES * sizeof(pthread_t));
+    int *occupiedThreads   = calloc(AVAILABLE_CORES, sizeof(int));
+    CoreUnityController threadController;
+    init_core_unity_controller(&threadController);
 
+    INITIAL_SIMULATION_TIME = get_current_time();   
+
+}
 
 /*
 >>>>>>>>>>>>>>>>>>>>>>>> Escalonamento por Prioridade <<<<<<<<<<<<<<<<<<<<<<<<<
 */
 
-int find_available_thread(int *occupiedThreads, int num_threads) {
-    for (int i = 0; i < num_threads; i++) {
+void allocate_cpu(long chosenCPU) {
+    cpu_set_t cpuset;
+    CPU_ZERO(&cpuset);
+    CPU_SET(chosenCPU, &cpuset);    
+
+    pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
+}
+
+long find_available_thread(int *occupiedThreads, int num_threads) {
+    for (long i = 0; i < num_threads; i++) {
         if (occupiedThreads[i] == 0) {
             return i;
         }
