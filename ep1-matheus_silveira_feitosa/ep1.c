@@ -9,6 +9,10 @@
 #define true  1
 #define false 0
 
+//Honestamente, acho que essa forma é bem mais legal do que usar um nome gigante.
+#define pthread_mutex_lock(&mutex)   P(s);
+#define pthread_mutex_unlock(&mutex) V(s);
+
 #define MAX_PROCESS_NAME 33
 #define MAX_LINE_SIZE 50
 //Nome = 32 + 3*9 (número de 3 digitos) + 3 espaços + \0 = 45
@@ -18,6 +22,8 @@
 
 #define FILE_SEPARATOR " "
 
+pthread_mutex_t writeFileMutex;
+
 typedef struct {
     char name[MAX_PROCESS_NAME];
     double arrival;
@@ -25,6 +31,12 @@ typedef struct {
     double remainingTime;
     double deadline;
 } SimulatedProcessData;
+
+typedef struct {
+    pthread_mutex_t mutex;
+    pthread_cond_t cond;
+    int available_cores;
+} CoreUnityController;
 
 //Lembrar de organizar isso depois.
 int  open_file(FILE **, char*, char *);
@@ -39,6 +51,8 @@ int  get_array_of_processes(FILE *, SimulatedProcessData*[]);
 void mergeSort(SimulatedProcessData *[], int, int);
 void FCFS(SimulatedProcessData *[], int);
 
+FILE *outputFile;
+
 //Essas variáveis são definidas uma vez e usadas apenas para leitura no decorrer do código
 int AVAILABLE_CORES;
 double INITIAL_SIMULATION_TIME; 
@@ -51,8 +65,9 @@ int main(int args, char* argv[]){
 
     AVAILABLE_CORES = get_nprocs();
     FILE *traceFile;
-    FILE *outputFile;
     SimulatedProcessData *processList[MAX_SIMULATED_PROCESSES];
+
+    writeFileMutex = PTHREAD_MUTEX_INITIALIZER;
 
     if (open_file(&traceFile, argv[1], "r")){exit(-1);}
     if (open_file(&outputFile, argv[2], "w")){exit(-1);}
@@ -80,7 +95,8 @@ int main(int args, char* argv[]){
 void FCFS(SimulatedProcessData * processList, int numProcesses){
     pthread_t * workThreads = malloc(AVAILABLE_CORES * sizeof(pthread_t));
     int *occupiedThreads   = calloc(AVAILABLE_CORES, sizeof(int));
-    int occupiedThreadsQtd = 0;
+    CoreUnityController threadController;
+    init_core_unity_controller(threadController);
 
     //Esse é o tempo 0 da Simulação a ser adotado como referência.
     double INITIAL_SIMULATION_TIME = get_current_time();
@@ -92,14 +108,22 @@ void FCFS(SimulatedProcessData * processList, int numProcesses){
         SimulatedProcessData *nextProcess = processList[nextProcessTracker];
         //Até dá pra travar ele aqui já que em tese, não tem nenhum outro processo pra rodar no momento
         //Se o próximo da fila não estiver pronto, certamente não vai ser o cara depois dele que vai estar.
-        while (nextProcess->arrival > get_elapsed_time(initialSimulationTime));
+        while (nextProcess->arrival > get_elapsed_time(INITIAL_SIMULATION_TIME));
         
         //Espera que haja pelo menos uma thread livre pra poder executar
-        while (occupiedThreadsQtd >= AVAILABLE_CORES){ continue; } 
+        P(threadController.mutex);
+        while (threadController.available_cores <= 0) {
+            pthread_cond_wait(&threadController.cond, &threadController.mutex);
+        }
+        threadController.available_cores--; // Reserva o núcleo
+        V(&threadController.mutex);
 
         int threadSlot = find_available_thread(occupiedThreads, AVAILABLE_CORES);
         if (threadSlot != -1){
-            pthread_create(&workThreads[threadSlot], NULL, simula_processo_FCFS, nextProcess);
+            void **args = malloc(2 * sizeof(void*));
+            args[0] = &threadController
+            args[1] = nextProcess;
+            pthread_create(&workThreads[threadSlot], NULL, simula_processo_FCFS, args);
             occupiedThreads[threadSlot] = 1;
             nextProcessTracker++;
         }
@@ -107,13 +131,25 @@ void FCFS(SimulatedProcessData * processList, int numProcesses){
     }
 
     join_threads(workThreads, occupiedThreads, AVAILABLE_CORES, true);
+    free(workThreads);
+    free(occupiedThreads);
 }
 
-void* simula_processo_FCFS(void *arg) {
-    SimulatedProcessData *p = (SimulatedProcessData*) arg;
-    double endTime = get_current_time() + p->burstTime;
+void* simula_processo_FCFS(void *args) {
+    void **args = (void**) arg;
+    CoreUnityController *threadController = (CoreUnityController*) args[0];
+    SimulatedProcessData *currentProcess = (SimulatedProcessData*) args[1];
+    double endTime = get_current_time() + currentProcess->burstTime;
     busy_wait_until(endTime);
-    return NULL;
+
+
+
+    P(&threadController->mutex);
+    threadController->available_cores++;
+    pthread_cond_signal(&threadController->cond);
+    V(&threadController->mutex);
+    free(args);
+    return;
 }
 
 int find_available_thread(int *occupiedThreads, int num_threads) {
@@ -157,32 +193,21 @@ void busy_wait_until(double endTime) {
 */
 
 
+//Abre um arquivo e retorna o seu descritor.
 int open_file(FILE **fileDescriptor, char *filepath, char *fileMode) {
     *fileDescriptor = fopen(filepath, fileMode);
-    if (*fileDescriptor == NULL) {
-        printf("O arquivo %s não pode ser aberto\n", filepath);
-        return -1;
-    }
-
-    return 0;
+    return (*fileDescriptor == NULL) ? -1 : 0;
 }
 
-int read_next_line(FILE * fileDescriptor, char* lineBuffer){
-    if (fgets(lineBuffer, MAX_LINE_SIZE, fileDescriptor) == NULL) {
-        return 0; // Acabou o arquivo.
-    }
+//Lê a próxima linha do arquivo e retorna 0 se o arquivo tiver acabado
+//Ou retorna 1 caso ele tenha lido uma linha.
+int read_next_line(FILE * fileDescriptor, char* lineBuffer){ return fgets(lineBuffer, MAX_LINE_SIZE, fileDescriptor) == NULL ? 0 : 1; }
 
-    return 1; // Algo foi lido
-}
+//Escreve uma linha em um arquivo de interesse e adiciona uma quebra no final.
+int write_next_line(FILE *fileDescriptor, char *lineBuffer) { return (fprintf(fileDescriptor, "%s\n", lineBuffer) < 0) ? -1 : 0; }
 
-int close_file(FILE * fileDescriptor){
-    if (fclose(fileDescriptor)) {
-        printf("Não foi possível fechar o arquivo\n");
-        return 0;
-    }
-
-    return -1;
-}
+//Fecha o arquivo, com um dado descritor.
+int close_file(FILE *fileDescriptor) { return fclose(fileDescriptor); }
 
 /*
 >>>>>>>>>>>>>>>>>>>>>>>>> UTILIDADES DO STRUCT <<<<<<<<<<<<<<<<<<<<<<<<<
@@ -205,6 +230,12 @@ void set_process_burst_time(SimulatedProcessData * process, const char * burstTi
 
 void set_process_deadline(SimulatedProcessData * process, const char * deadline){
     process->deadline = atof(deadline);
+}
+
+void init_core_unity_controller(CoreUnityController * controller){
+    controller.mutex = PTHREAD_MUTEX_INITIALIZER;
+    controller.cond = PTHREAD_COND_INITIALIZER;
+    controller.available_cores = AVAILABLE_CORES;
 }
 
 /*
@@ -260,6 +291,18 @@ double get_current_time() {
 double get_elapsed_time(double startTime) { return get_current_time() - startTime; }
 
 int is_running(double startTime, double endTime)  { return get_elapsed_time(startTime) <= endTime; } 
+
+void finish_process(SimulatedProcessData * process, double finishTime){
+    char outputLine[MAX_LINE_SIZE];
+    int deadlineMet = process->deadline <= finishTime ? true : false;
+    double clockTime = finishTime - process->arrival;
+    snprintf(outputLine, MAX_LINE_SIZE, "%s %lf %lf %d", process->name, clockTime, finishTime, deadlineMet);
+    
+    //Só pra garantir que nenhum par de threads tente escrever no arquivo ao mesmo tempo.
+    P(writeFileMutex);
+    write_next_line(outputFile, outputLine);
+    V(writeFileMutex);
+}
 
 
 
