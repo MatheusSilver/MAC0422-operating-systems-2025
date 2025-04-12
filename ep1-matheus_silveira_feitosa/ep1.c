@@ -10,8 +10,8 @@
 #define false 0
 
 //Honestamente, acho que essa forma é bem mais legal do que usar um nome gigante.
-#define pthread_mutex_lock(&mutex)   P(s);
-#define pthread_mutex_unlock(&mutex) V(s);
+#define pthread_mutex_lock(mutex)   P(mutex);
+#define pthread_mutex_unlock(mutex) V(mutex);
 
 #define MAX_PROCESS_NAME 33
 #define MAX_LINE_SIZE 50
@@ -22,7 +22,7 @@
 
 #define FILE_SEPARATOR " "
 
-pthread_mutex_t writeFileMutex;
+pthread_mutex_t writeFileMutex = PTHREAD_MUTEX_INITIALIZER;
 
 typedef struct {
     char name[MAX_PROCESS_NAME];
@@ -50,24 +50,23 @@ void set_process_deadline(SimulatedProcessData *, const char *);
 int  get_array_of_processes(FILE *, SimulatedProcessData*[]);
 void mergeSort(SimulatedProcessData *[], int, int);
 void FCFS(SimulatedProcessData *[], int);
+double get_elapsed_time(double startTime);
+double get_current_time();
 
 FILE *outputFile;
 
 //Essas variáveis são definidas uma vez e usadas apenas para leitura no decorrer do código
 int AVAILABLE_CORES;
-double INITIAL_SIMULATION_TIME; 
 
 int main(int args, char* argv[]){
-    if (args != 2){
-        printf("Execute este programa usando %s <escalonador a simular> <nome do arquivo de trace> <nome do arquivo de saida>\n", argv[0]);
+    if (args != 3) {
+        printf("Uso: %s <arquivo_trace> <arquivo_saida>\n", argv[0]);
         exit(-1);
     }
 
     AVAILABLE_CORES = get_nprocs();
     FILE *traceFile;
     SimulatedProcessData *processList[MAX_SIMULATED_PROCESSES];
-
-    writeFileMutex = PTHREAD_MUTEX_INITIALIZER;
 
     if (open_file(&traceFile, argv[1], "r")){exit(-1);}
     if (open_file(&outputFile, argv[2], "w")){exit(-1);}
@@ -92,7 +91,7 @@ int main(int args, char* argv[]){
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> FCFS <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 */
 
-void FCFS(SimulatedProcessData * processList, int numProcesses){
+void FCFS(SimulatedProcessData * processList[], int numProcesses){
     pthread_t * workThreads = malloc(AVAILABLE_CORES * sizeof(pthread_t));
     int *occupiedThreads   = calloc(AVAILABLE_CORES, sizeof(int));
     CoreUnityController threadController;
@@ -121,7 +120,7 @@ void FCFS(SimulatedProcessData * processList, int numProcesses){
         int threadSlot = find_available_thread(occupiedThreads, AVAILABLE_CORES);
         if (threadSlot != -1){
             void **args = malloc(2 * sizeof(void*));
-            args[0] = &threadController
+            args[0] = &threadController;
             args[1] = nextProcess;
             pthread_create(&workThreads[threadSlot], NULL, simula_processo_FCFS, args);
             occupiedThreads[threadSlot] = 1;
@@ -139,10 +138,8 @@ void* simula_processo_FCFS(void *args) {
     void **args = (void**) arg;
     CoreUnityController *threadController = (CoreUnityController*) args[0];
     SimulatedProcessData *currentProcess = (SimulatedProcessData*) args[1];
-    double endTime = get_current_time() + currentProcess->burstTime;
+    double endTime = get_current_time() + p->burstTime;
     busy_wait_until(endTime);
-
-
 
     P(&threadController->mutex);
     threadController->available_cores++;
@@ -225,18 +222,19 @@ void set_process_arrival_time(SimulatedProcessData * process, const char * arriv
 
 void set_process_burst_time(SimulatedProcessData * process, const char * burstTime){
     process->burstTime = atof(burstTime);
-    process->remainingTime = atof(burstTime)
+    process->remainingTime = atof(burstTime);
 }
 
 void set_process_deadline(SimulatedProcessData * process, const char * deadline){
     process->deadline = atof(deadline);
 }
 
-void init_core_unity_controller(CoreUnityController * controller){
-    controller.mutex = PTHREAD_MUTEX_INITIALIZER;
-    controller.cond = PTHREAD_COND_INITIALIZER;
-    controller.available_cores = AVAILABLE_CORES;
+void init_core_unity_controller(CoreUnityController *controller) {
+    pthread_mutex_init(&controller->mutex, NULL);
+    pthread_cond_init(&controller->cond, NULL);
+    controller->available_cores = AVAILABLE_CORES;
 }
+
 
 /*
 >>>>>>>>>>>>>>>>>>>>>>>>> UTILIDADES GERAIS <<<<<<<<<<<<<<<<<<<<<<<<<
