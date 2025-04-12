@@ -145,12 +145,13 @@ void get_hostname(char *hostname, int size) {
     gethostname(hostname, size);
 }
 
-void get_shell_prompt(const char *hostname, const char *currentDirectory, char* msgBuffer, int bufferSize) {
-    snprintf(msgBuffer, bufferSize, "[%s:%s]$ ", hostname, currentDirectory);
-}
 
 void get_current_directory(char *currentDirectory, int size) {
     getcwd(currentDirectory, size);
+}
+
+void get_shell_prompt(const char *hostname, const char *currentDirectory, char* msgBuffer, int bufferSize) {
+    snprintf(msgBuffer, bufferSize, "[%s:%s]$ ", hostname, currentDirectory);
 }
 
 void get_user_command(char **inputBuffer, char *inputMSG) {
