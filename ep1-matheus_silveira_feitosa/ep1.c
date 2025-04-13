@@ -43,14 +43,10 @@ typedef struct {
     int burstTime;
     int deadline;
     int executionTime;
-    int preempt;       //Usado em SRTN pra marcar se deve ou não trocar de contexto.
-
-    int remainingTime; //Assumimos que o tempo "extra" do ponto flutuante vem da demora pra trocar
-                       //contexto, escrever em arquivo, ou outras coisas extras que são feitas para cada processo.
+    int remainingTime;
 } SimulatedProcessData;
 
 typedef struct {
-    SimulatedProcessData **queue;
     int head;       
     int tail;        
     int length;      
@@ -59,7 +55,11 @@ typedef struct {
     int isSRTN;
     pthread_mutex_t mutex;
     pthread_cond_t cond;
-} Queue;
+    pthread_cond_t cond_running;
+
+    SimulatedProcessData **readyQueue;
+    SimulatedProcessData **runningQueue;
+} CoreQueueManager;
 
 //Lembrar de organizar isso depois.
 int  open_file(FILE **, char*, char *);
@@ -82,14 +82,13 @@ void* thread_unit_FCFS(void *);
 void finish_process(SimulatedProcessData *, double);
 void write_context_switches_quantity();
 void allocate_cpu(long);
-void init_queue(Queue *, int, int);
-int is_empty(Queue *);
-void destroy_queue(Queue *);
-void enqueue(Queue *, SimulatedProcessData *);
+void init_core_manager(CoreQueueManager *, int, int);
+int is_empty(CoreQueueManager *);
+void destroy_queue(CoreQueueManager *);
+void enqueue(CoreQueueManager *, SimulatedProcessData *);
 void SRTN(SimulatedProcessData *[], int);
 void* thread_unit_SRTN(void *);
-void update_preempt_flags(Queue *);
-SimulatedProcessData *dequeue(Queue *);
+SimulatedProcessData *dequeue(CoreQueueManager *);
 void reset_execution_time(SimulatedProcessData *);
 void update_process_duration(SimulatedProcessData *, int);
 
@@ -140,48 +139,48 @@ int main(int args, char* argv[]){
 //Adicionar eles na fila, depois ser suspenso pra dar 100% do lugar
 //Para as outras threads consumidoras.
 void FCFS(SimulatedProcessData * processList[], int numProcesses){
-    Queue pq;
-    init_queue(&pq, numProcesses, false);
+    CoreQueueManager systemQueue;
+    init_core_manager(&systemQueue, numProcesses, false);
 
     //Esse é o tempo 0 da Simulação a ser adotado como referência.
     INITIAL_SIMULATION_TIME = get_current_time();
     
     pthread_t * consumerThreads = malloc(AVAILABLE_CORES * sizeof(pthread_t));
     for (long i = 0; i < AVAILABLE_CORES; i++) {
-        // Prepara um array de 2 elementos para passar [Queue*, core_id]
+        // Prepara um array de 2 elementos para passar [CoreQueueManager*, core_id]
         void **args = malloc(2 * sizeof(void *));
-        args[0] = &pq;
+        args[0] = &systemQueue;
         args[1] = (void*) i;  
         pthread_create(&consumerThreads[i], NULL, thread_unit_FCFS, args);
     }
     for (int i = 0; i < numProcesses; i++) {
         SimulatedProcessData *currentProcess = processList[i];
         while (currentProcess->arrival > get_elapsed_time_from(INITIAL_SIMULATION_TIME)) sleep(1);
-        enqueue(&pq, currentProcess);
+        enqueue(&systemQueue, currentProcess);
     }
     
-    P(pq.mutex);
-    pq.finished = 1;
+    P(systemQueue.mutex);
+    systemQueue.finished = 1;
     //Funny que o professor disse que raramente usa broadcast
     //E no fim era justamente o que eu precisava k
-    pthread_cond_broadcast(&pq.cond);
-    V(pq.mutex);
+    pthread_cond_broadcast(&systemQueue.cond);
+    V(systemQueue.mutex);
 
     join_threads(consumerThreads, AVAILABLE_CORES);
 
     free(consumerThreads);
     write_context_switches_quantity();
-    destroy_queue(&pq);
+    destroy_queue(&systemQueue);
 }
 
 //Esses são os consumidores
 void* thread_unit_FCFS(void *args) {
-    Queue *pq = ((void**)args)[0];
+    CoreQueueManager *systemQueue = ((void**)args)[0];
     long chosenCPU = (long)((void**)args)[1];  //Lado bom de saber Assembly é economizar tempo com essas bizarrices...
     allocate_cpu(chosenCPU);
 
     while(true) {
-        SimulatedProcessData *currentProcess = dequeue(pq);
+        SimulatedProcessData *currentProcess = dequeue(systemQueue);
         //Só retorna null se a fila tiver acabado se não o consumidor vai esperar o produtor produzir o processo
         //Explicando em termos melhores, o produtor produzir é o mesmo que dizer "o processo chegar".
         if (currentProcess == NULL) break;
@@ -200,56 +199,56 @@ void* thread_unit_FCFS(void *args) {
 */
 
 void SRTN(SimulatedProcessData * processList[], int numProcesses) {
-    Queue pq;
-    init_queue(&pq, numProcesses, true);
+    CoreQueueManager systemQueue;
+    init_core_manager(&systemQueue, numProcesses, true);
     
     INITIAL_SIMULATION_TIME = get_current_time();
     
     pthread_t *consumerThreads = malloc(AVAILABLE_CORES * sizeof(pthread_t));
     for (long i = 0; i < AVAILABLE_CORES; i++) {
         void **args = malloc(2 * sizeof(void *));
-        args[0] = &pq;
+        args[0] = &systemQueue;
         args[1] = (void *) i;
         pthread_create(&consumerThreads[i], NULL, thread_unit_SRTN, args);
     }
     
     for (int i = 0; i < numProcesses; i++) {
         SimulatedProcessData *currentProcess = processList[i];
-        //A cada seção de adição de processos, após adicionar todos, ele marca quais processos deeverão ser preemptados.
-        if (currentProcess->arrival > get_elapsed_time_from(INITIAL_SIMULATION_TIME)) update_preempt_flags(&pq);
         while (currentProcess->arrival > get_elapsed_time_from(INITIAL_SIMULATION_TIME)) sleep(1);
-        enqueue(&pq, currentProcess);
+        enqueue(&systemQueue, currentProcess);
     }
     
-    P(pq.mutex);
-    pq.finished = 1;
-    pthread_cond_broadcast(&pq.cond);
-    V(pq.mutex);
+    P(systemQueue.mutex);
+    systemQueue.finished = 1;
+    pthread_cond_broadcast(&systemQueue.cond);
+    V(systemQueue.mutex);
     
     join_threads(consumerThreads, AVAILABLE_CORES);
     
     free(consumerThreads);
     write_context_switches_quantity();
-    destroy_queue(&pq);
+    destroy_queue(&systemQueue);
 }
 
 void* thread_unit_SRTN(void *args) {
-    Queue *pq = ((void**)args)[0];
+    CoreQueueManager *systemQueue = ((void**)args)[0];
     long chosenCPU = (long)((void**)args)[1];
     allocate_cpu(chosenCPU);
 
     while(true) {
-        SimulatedProcessData *currentProcess = dequeue(pq);
+        SimulatedProcessData *currentProcess = dequeue(systemQueue);
         if (currentProcess == NULL) break;
+        systemQueue->runningQueue[chosenCPU] = currentProcess;
         while (currentProcess->remainingTime > 0) {
 
             //Pega o mínimo entre o intervalo de verificação e o tempo restante.
             //Aqui é sempre MIN_QUANTUM, mas isso é readaptado lá na prioridade.
-            double executionTime = min(MIN_QUANTUM, currentProcess->remainingTime);
-            busy_wait_until(executionTime);
-            update_process_duration(currentProcess, executionTime);
+            if (currentProcess != systemQueue->runningQueue[chosenCPU]) break;
+
+            double endTime = min(MIN_QUANTUM, currentProcess->remainingTime);
+            busy_wait_until(endTime);
+            update_process_duration(currentProcess, endTime);
             
-            if (currentProcess->preempt == true) break;
         }
 
         if (currentProcess->remainingTime <= 0) {
@@ -260,7 +259,7 @@ void* thread_unit_SRTN(void *args) {
             contextSwitches++;
             V(preemptionCounterMutex);
             reset_execution_time(currentProcess);
-            enqueue(pq, currentProcess);
+            enqueue(systemQueue, currentProcess);
         }
 
     }
@@ -493,74 +492,86 @@ void mergeSort(SimulatedProcessData* arr[], int left, int right) {
 //No final, esse EP pareceu uma grande aplicação dos produtores e consumidores
 //Mas com uma porrada de consumidor e só um produtor.
 
-void init_queue(Queue *pq, int maxSize, int isSRTN) {
-    pq->queue = malloc(maxSize * sizeof(SimulatedProcessData *));
-    pq->head = 0;
-    pq->tail = -1;
-    pq->length = 0;
-    pq->maxSize = maxSize;
-    pq->finished = 0;
-    pq->isSRTN=isSRTN;
-    pthread_mutex_init(&pq->mutex, NULL);
-    pthread_cond_init(&pq->cond, NULL);
+//Me pergunto o quão cursed é forçar um POO em C normal
+
+void init_core_manager(CoreQueueManager *this, int maxSize, int isSRTN) {
+    this->head = 0;
+    this->tail = 0;
+    this->length = 0;
+    this->maxSize = maxSize;
+    this->finished = 0;
+    this->isSRTN = isSRTN;
+    pthread_mutex_init(&this->mutex, NULL);
+    pthread_cond_init(&this->cond, NULL);
+    pthread_cond_init(&this->cond_running, NULL)
+    
+    this->readyQueue   = calloc(maxSize, maxSize * sizeof(SimulatedProcessData *) );
+    this->runningQueue = calloc(AVAILABLE_CORES, AVAILABLE_CORES * sizeof(SimulatedProcessData *));
 }
 
-int is_empty(Queue *pq){ return pq->length == 0 ? true : false; }
+int is_empty(CoreQueueManager *this){ return this->length == 0 ? true : false; }
 
-void destroy_queue(Queue *pq) {
-    free(pq->queue);
-    pthread_mutex_destroy(&pq->mutex);
-    pthread_cond_destroy(&pq->cond);
+void destroy_queue(CoreQueueManager *this) {
+    free(this->readyQueue);
+    free(this->runningQueue);
+    pthread_mutex_destroy(&this->mutex);
+    pthread_cond_destroy(&this->cond);
+    pthread_cond_destroy(&this->cond_running);
 }
 
-void enqueue(Queue *pq, SimulatedProcessData *process) {
-    P(pq->mutex);
-    if (pq->isSRTN){
-        int i = pq->length - 1;
+void switch_largest_running_process(CoreQueueManager *this, SimulatedProcessData *newProcess){
+    int pos = -1;
+    int largestRemainingTime = newProcess->executionTime;
+    for (int i = 0; i < AVAILABLE_CORES; i++){
+        if (this->runningQueue[i] != NULL && this->runningQueue[i]->executionTime > largestRemainingTime) {
+            pos = i;
+            largestRemainingTime = this->runningQueue[i]->executionTime;
+        }
+    }
+    if (pos != -1) this->runningQueue[pos] = newProcess;
+}
+
+void enqueue(CoreQueueManager *this, SimulatedProcessData *process) {
+    P(this->mutex);
+    if (this->isSRTN){
+        int i = this->length - 1;
         while (i >= 0)
         {
-            int idx = (pq->head + i) % pq->maxSize;
-            if (pq->queue[idx]->executionTime > process->executionTime) {
-                int nextIdx = (idx + 1) % pq->maxSize;
-                pq->queue[nextIdx] = pq->queue[idx];
+            int idx = (this->head + i) % this->maxSize;
+            if (this->readyQueue[idx]->executionTime > process->executionTime) {
+                int nextIdx = (idx + 1) % this->maxSize;
+                this->readyQueue[nextIdx] = this->readyQueue[idx];
                 i--;
             } else {
                 break;
             }
         }
-        int pos = (pq->head + i + 1) % pq->maxSize;
-        pq->queue[pos] = process;
-        pq->tail = pos;
-        pq->length++;
+        switch_largest_running_process(this, process);
+        int pos = (this->head + i + 1) % this->maxSize;
+        this->readyQueue[pos] = process;
+        this->tail = pos;
+        this->length++;
     }
     else{
-        pq->tail = (pq->tail + 1) % pq->maxSize;
-        pq->queue[pq->tail] = process;
-        pq->length++;
+        this->tail = (this->tail + 1) % this->maxSize;
+        this->readyQueue[this->tail] = process;
+        this->length++;
     }
-    pthread_cond_signal(&pq->cond);
-    V(pq->mutex);
+    pthread_cond_signal(&this->cond);
+    V(this->mutex);
 }
 
-void update_preempt_flags(Queue *pq) {
-    for (int j = 0; j < pq->length; j++) {
-        if (j < AVAILABLE_CORES) pq->queue[j]->preempt = false;
-        else pq->queue[j]->preempt = true;
-    }
-}
-
-
-SimulatedProcessData *dequeue(Queue *pq) {
+SimulatedProcessData *dequeue(CoreQueueManager *this) {
     SimulatedProcessData *process = NULL;
-    P(pq->mutex);
-    while (is_empty(pq) && !pq->finished) {
-        pthread_cond_wait(&pq->cond, &pq->mutex);
+    P(this->mutex);
+    while (is_empty(this) && !this->finished) {
+        pthread_cond_wait(&this->cond, &this->mutex);
     }
-    if (!is_empty(pq)) {
-        process = pq->queue[pq->head];
-        pq->head = (pq->head + 1) % pq->maxSize;
-        pq->length--;
+    if (!is_empty(this)) {
+        process = this->readyQueue[this->head];
+        this->head = (this->head + 1) % this->maxSize;
+        this->length--;
     }
-    V(pq->mutex);
+    V(this->mutex);
     return process;
 }
