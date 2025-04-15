@@ -1,74 +1,35 @@
-#include <stdio.h>
-#include <stdlib.h>
+#include "uspsh.h"
 
-//Usado para as syscalls (menos chmod)
-#include <unistd.h>
-
-//Usado na captura de commandos e funcionalidade do histórico.
-#include <readline/history.h>
-#include <readline/readline.h>
-
-// Usado pelo whoami (Converter ID em nome de usuário)
-#include <pwd.h>
-
-//Usado pelo chmod
-#include <sys/stat.h>
-
-//Usado pelo waitpid
-#include <sys/wait.h>
-
-#define MACHINE_NAME_MAX 16
-#define PATH_NAME_MAX 4096 //No Windows, o limite é 260, mas no Linux o coiso aparentemente é 4096, na dúvida, vou assumir o padrão do Linux
-#define MAX_TOKEN_QTD 20 //Improvável, mas vai que né?
-
-#define IFS "\n\t " //IFS padrão (talvez num shell de verdade isso seria uma variável...)
-
-
+char IFS[4] = "\n\t ";
 char machineName[MACHINE_NAME_MAX];
 char currentDirectory[PATH_NAME_MAX];
-
-void get_hostname(char *, int);
-void get_shell_prompt(const char *, const char *, char *, int);
-void get_current_directory(char *, int);
-void get_user_command(char **, char *);
-int  extract_tokens_from_line(char *, char *[]);
-void command_handler(char *, char *[]);
-
 
 int main(){
     char *commandLineInput = NULL;
     char *commandTokens[MAX_TOKEN_QTD];
-    char promptMSG[PATH_NAME_MAX + MACHINE_NAME_MAX + 6]; //Na pratica são 5, mas estamos contando o \0 no final.
+    int numTokens;
     
-    //Setup inicial
+    /* Espaço para a mensagem de prompt + \0 */
+    char promptMSG[PATH_NAME_MAX + MACHINE_NAME_MAX + 6]; 
+    
+    /* Setup inicial: obtém o nome da máquina e o diretório em que o shell iniciou a execução */
     get_hostname(machineName, sizeof(machineName));
     get_current_directory(currentDirectory, sizeof(currentDirectory));
     
     while (1){
-        get_shell_prompt(machineName, currentDirectory, promptMSG, sizeof(promptMSG));
+        get_shell_prompt(machineName, currentDirectory, promptMSG);
         get_user_command(&commandLineInput, promptMSG);
-        int numTokens = extract_tokens_from_line(commandLineInput, commandTokens);
-        if (numTokens > 0) { //Provavelmente o usuário só digitou Enter, então evitamos o processamento disso.
-            command_handler(commandTokens[0], commandTokens);
-        }
+        numTokens = extract_tokens_from_line(commandLineInput, commandTokens);
+        
+        /* Verificando uma entrada válida para processar e não só um Enter ou algo do tipo. */
+        if (numTokens > 0) command_handler(commandTokens[0], commandTokens);
         
         free(commandLineInput);
     }
-    
     return 0;
-    
 }
 
-/*
->>>>>>>>>>>>>>>>>>>>>>>>> GERENCIADOR DE COMANDOS <<<<<<<<<<<<<<<<<<<<<<<<<
-*/
-
-void change_directory(const char*);
-void whoami();
-void change_permissions(const char*, const char*);
-void execute_external_command(char*, char*[]);
-void close_uspsh();
-void print_error(char *);
+/* >>>>>>>>>>>>>>>>>>>>>>>>> GERENCIADOR DE COMANDOS <<<<<<<<<<<<<<<<<<<<<<<<< */
 
 void command_handler(char* command, char* arguments[]){
     if (strcmp(command, "cd") == 0) {
@@ -85,13 +46,9 @@ void command_handler(char* command, char* arguments[]){
     }
 }
 
-/*
->>>>>>>>>>>>>>>>>>>>>>>>> COMANDOS INTERNOS <<<<<<<<<<<<<<<<<<<<<<<<<
-*/
+/* >>>>>>>>>>>>>>>>>>>>>>>>> COMANDOS INTERNOS <<<<<<<<<<<<<<<<<<<<<<<<< */
 
-void change_directory(const char *new_directory) {
-    chdir(new_directory);    
-}
+void change_directory(const char *new_directory) { chdir(new_directory); }
 
 void whoami(){
     struct passwd *pw = getpwuid(getuid());
@@ -102,78 +59,61 @@ void change_permissions(const char* mode, const char* pathname){
     chmod(pathname, permissions);
 }
 
+/* Função não obrigatória que veio da experimentação de criar shells dentro de shells */
 void close_uspsh(){
-    printf("logout\n"); //Copiei isso do bash original, mas só por que estava brincando de criar vários shells dentro de shells
+    printf("logout\n");
     exit(0);
 }
 
-/*
->>>>>>>>>>>>>>>>>>>>>>>>> EXECUÇÃO DE COMANDOS <<<<<<<<<<<<<<<<<<<<<<<<<
-*/
+/* >>>>>>>>>>>>>>>>>>>>>>>>> EXECUÇÃO DE COMANDOS <<<<<<<<<<<<<<<<<<<<<<<<< */
 
 void execute_external_command(char* command, char* arguments[]){
-    int pid = fork(); //0 é o processo filho
+    int pid = fork(); 
+    int status;
 
-    
-    if (pid == 0){ //Processo filho
-        execve(command, arguments, 0); //Poderiamos ter usado execvp para permitir o input de ls ao invés de /bin/ls
-                                       //Mas considerando que reescrevemos alguns comandos, acho mais válido usar execve assim como no Tanenbaum. 
-        
-        print_error(command);          //Só é impresso se o execve falhar
-        
-        exit(-1);                      //Garantindo que o processo filho seja encerrado com erro -1
-                                       //Caso ele nem sequer possa ser executado.
-
-    }else{ //Processo pai
-        int status;
+    if (pid == 0){
+        /* Usa o caminho absoluto do comando */
+        execve(command, arguments, 0);         
+        /* Informa o usuário se algo deu errado (provavelmente ele digitou o comando errado) */
+        print_error(command);
+        /* Encerra o processo filho se ele não puder ser executado. */
+        exit(-1);   
+    }else{
         waitpid(pid, &status, 0);
     }
 }
 
-/*
->>>>>>>>>>>>>>>>>>>>>>>>> UTILIDADES GERAIS <<<<<<<<<<<<<<<<<<<<<<<<<
-*/
+/* >>>>>>>>>>>>>>>>>>>>>>>>> UTILIDADES GERAIS <<<<<<<<<<<<<<<<<<<<<<<<< */
 
-void get_hostname(char *hostname, int size) {
-    gethostname(hostname, size);
-}
+void get_hostname(char *hostname, int size) { gethostname(hostname, size); }
 
+void get_current_directory(char *currentDirectory, int size) { getcwd(currentDirectory, size); }
 
-void get_current_directory(char *currentDirectory, int size) {
-    getcwd(currentDirectory, size);
-}
-
-void get_shell_prompt(const char *hostname, const char *currentDirectory, char* msgBuffer, int bufferSize) {
-    snprintf(msgBuffer, bufferSize, "[%s:%s]$ ", hostname, currentDirectory);
+void get_shell_prompt(const char *hostname, const char *currentDirectory, char* msgBuffer) {
+    sprintf(msgBuffer, "[%s:%s]$ ", hostname, currentDirectory);
 }
 
 void get_user_command(char **inputBuffer, char *inputMSG) {
     *inputBuffer = readline(inputMSG);
-    if (*inputBuffer && **inputBuffer) { //Impedir que um input vazio ou null seja salvo no history
-        add_history(*inputBuffer);
-    }
+    /* Garante que apenas comandos válidos sejam salvos no histórico */
+    /* Evita inputBuffer NULL e começando com \0 */
+    if (*inputBuffer && **inputBuffer) add_history(*inputBuffer);
 }
 
 int extract_tokens_from_line(char* userInput, char* tokens[]){
     int numTokens = 0;
-    
-    
     char *token = strtok(userInput, IFS);  
     while (token != NULL) {
         tokens[numTokens++] = token;
         token = strtok(NULL, IFS);
     }
     
-    tokens[numTokens] = NULL;  // Garantir que o último token seja NULL, pra demarcar onde o exec deve parar.
-    // Talvez isso devesse ser responsabilidade de outra função...
+    /* Garante que o último elemento da array de argumentos seja NULL ou \0 como pedido pelo exec */
+    tokens[numTokens] = NULL;
     
-    return numTokens; //Se zero, alguma coisa deu errado e não foi possível capturar tokens.
+    return numTokens;
 }
 
-/*
->>>>>>>>>>>>>>>>>>>>>>>>> FEEDBACK DE ERROS <<<<<<<<<<<<<<<<<<<<<<<<<
-*/
+/* >>>>>>>>>>>>>>>>>>>>>>>>> FEEDBACK DE ERROS <<<<<<<<<<<<<<<<<<<<<<<<< */
 
-void print_error(char* commandName) {
-    printf("O comando %s não foi achado\n", commandName);
-}
+void print_error(char* commandName) { printf("O comando %s não foi encontrado\n", commandName); }
