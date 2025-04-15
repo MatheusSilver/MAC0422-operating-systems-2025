@@ -196,10 +196,17 @@ void FCFS(SimulatedProcessData * processList[], int numProcesses){
     pthread_t *simulationUnits = initialize_simulation_units(&systemQueue, AVAILABLE_CORES, thread_unit_FCFS);
     
     INITIAL_SIMULATION_TIME = get_current_time();
-    for (int i = 0; i < numProcesses; i++) {
+    int i = 0;
+    while (i < numProcesses) {
         SimulatedProcessData *nextProcess = processList[i];
         if(get_elapsed_time_from(INITIAL_SIMULATION_TIME) < nextProcess->arrival) sleep_until(nextProcess->arrival);
-        enqueue(&systemQueue, nextProcess);
+        
+        //Não é necessário se preocupar com sincronização aqui pois o próprio sistema de dequeue já irá cuidar disso.
+        //Aqui só teremos problema se a queue estiver vazia, se for este o caso, o enqueue libera o dequeue
+        //Se a queue não estiver vazia, então o dequeue não irá impedir que seja retirado um processo já existente.
+        while (i < numProcesses && get_elapsed_time_from(INITIAL_SIMULATION_TIME) >= processList[i]->arrival){
+            enqueue(&systemQueue, processList[i++]);
+        }
     }
     
     P(systemQueue.mutex);
@@ -241,18 +248,24 @@ void SRTN(SimulatedProcessData * processList[], int numProcesses) {
     pthread_t *simulationUnits = initialize_simulation_units(&systemQueue, AVAILABLE_CORES, thread_unit_SRTN);
     
     INITIAL_SIMULATION_TIME = get_current_time();
-    for (int i = 0; i < numProcesses; i++) {
+    int i = 0;
+    while (i < numProcesses) {
         SimulatedProcessData *nextProcess = processList[i];
-        if(get_elapsed_time_from(INITIAL_SIMULATION_TIME) < nextProcess->arrival) {
-            sleep_until(nextProcess->arrival);
-            update_idle_cores(&systemQueue);
-        }
+        if(get_elapsed_time_from(INITIAL_SIMULATION_TIME) < nextProcess->arrival) sleep_until(nextProcess->arrival);
+        
         P(syncMutex);
         isSwitchingContext = true;
-        pthread_cond_broadcast(&syncCond);
         V(syncMutex);
         
-        enqueue(&systemQueue, nextProcess);
+        update_idle_cores(&systemQueue);
+        while (i < numProcesses && get_elapsed_time_from(INITIAL_SIMULATION_TIME) >= processList[i]->arrival){
+            enqueue(&systemQueue, processList[i++]);
+        }
+
+        P(syncMutex);
+        isSwitchingContext = false;
+        pthread_cond_broadcast(&syncCond);
+        V(syncMutex);
     }
     
     P(systemQueue.mutex);
@@ -278,7 +291,7 @@ void* thread_unit_SRTN(void *args) {
         while (currentProcess->remainingTime > 0) {
 
             P(syncMutex);
-            while (!isSwitchingContext) pthread_cond_wait(&syncCond, &syncMutex);
+            while (isSwitchingContext) pthread_cond_wait(&syncCond, &syncMutex);
             V(syncMutex);
             if (systemQueue->runningQueue[chosenCPU] == NULL) break;
 
@@ -304,10 +317,13 @@ void priority_scheduling(SimulatedProcessData * processList[], int numProcesses)
     pthread_t *simulationUnits = initialize_simulation_units(&systemQueue, AVAILABLE_CORES, thread_unit_priority_scheduling);
     
     INITIAL_SIMULATION_TIME = get_current_time();
-    for (int i = 0; i < numProcesses; i++) {
+    int i = 0;
+    while (i < numProcesses) {
         SimulatedProcessData *nextProcess = processList[i];
-        if(get_elapsed_time_from(INITIAL_SIMULATION_TIME) < nextProcess->arrival) sleep_until(nextProcess->arrival);        
-        enqueue(&systemQueue, nextProcess);
+        if(get_elapsed_time_from(INITIAL_SIMULATION_TIME) < nextProcess->arrival) sleep_until(nextProcess->arrival);
+        while (i < numProcesses && get_elapsed_time_from(INITIAL_SIMULATION_TIME) >= processList[i]->arrival){
+            enqueue(&systemQueue, processList[i++]);
+        }
     }
     
     P(systemQueue.mutex);
