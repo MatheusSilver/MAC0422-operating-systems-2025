@@ -10,6 +10,7 @@ int main(){
     int numTokens;
     
     /* Espaço para a mensagem de prompt + \0 */
+    /* O 6 são para elementos de  formatação adicionais do prompt */
     char promptMSG[PATH_NAME_MAX + MACHINE_NAME_MAX + 6]; 
     
     /* Setup inicial: obtém o nome da máquina e o diretório em que o shell iniciou a execução */
