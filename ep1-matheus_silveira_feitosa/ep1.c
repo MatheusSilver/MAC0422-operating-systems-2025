@@ -888,7 +888,8 @@ int compareProcessUnits(const SimulatedProcessUnit *p1, const SimulatedProcessUn
         case FIRST_COME_FIRST_SERVED:      return p1->processData->arrival - p2->processData->arrival;
         case SHORTEST_REMAINING_TIME_NEXT: return customRound(p1->processData->executionTime - p2->processData->executionTime);
         case PRIORITY_SCHEDULING:{
-            int priorityDiff = p2->processData->priority - p1->processData->priority;
+            //O sinal de menos e porque a prioridade mais alta tem valor negativo e a menor, valor positivo.
+            int priorityDiff = -(p2->processData->priority - p1->processData->priority);
             return (priorityDiff != 0) ? priorityDiff : customRound(p1->processData->executionTime - p2->processData->executionTime);            
         }
         default: return 0;
