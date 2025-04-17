@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* Usado para as syscalls (menos chmod) */
+/* Usado para as syscalls */
 #include <unistd.h>
 
 /* Usado na captura de comandos e funcionalidade do histórico */
