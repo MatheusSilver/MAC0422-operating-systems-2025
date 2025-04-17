@@ -27,7 +27,7 @@
 
 //Importante para definir os intervalos de checagem para SRTN e de rotação da prioridade.
 #define MIN_QUANTUM 1
-#define MAX_QUANTUM 5
+#define MAX_QUANTUM 3
 
 #define FILE_SEPARATOR " "
 

@@ -15,7 +15,6 @@
 #define P(mutex) pthread_mutex_lock(&(mutex))
 #define V(mutex) pthread_mutex_unlock(&(mutex))
 #define min(a, b) ((a) < (b) ? (a) : (b))
-#define max(a, b) ((a) > (b) ? (a) : (b))
 
 /* É bem improvável que o número de trocas de contexto supere 200, mas só por garantia. */
 #define MAX_CONTEXT_SWITCH_ORDER 5 
@@ -25,13 +24,15 @@
 //Só pra garantir, arrendondamos para 50
 
 #define MAX_SIMULATED_PROCESSES 50
-#define STANDARD_LATE 0.1
 
 //Importante para definir os intervalos de checagem para SRTN e de rotação da prioridade.
 #define MIN_QUANTUM 1
-#define MAX_QUANTUM 5
+#define MAX_QUANTUM 3
+#define MAX_PREEMPTIONS_UNTIL_PROMOTION 3
 
 #define FILE_SEPARATOR " "
+
+#define EPSILON 0.01
 
 pthread_mutex_t writeFileMutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t preemptionCounterMutex = PTHREAD_MUTEX_INITIALIZER;
@@ -58,8 +59,9 @@ typedef struct {
     double executionTime;
     double remainingTime;
     double quantumTime;
+    double quantumRemaining;
     int priority;
-    int ID;
+    int numPreemptions;
     ProcessStatus status;
 } SimulatedProcessData;
 
@@ -107,6 +109,7 @@ void set_process_name(SimulatedProcessData *, const char *);
 void set_process_arrival_time(SimulatedProcessData *, const char *);
 void set_process_burst_time(SimulatedProcessData *, const char *);
 void set_process_deadline(SimulatedProcessData *, const char *);
+void set_quantum_time(SimulatedProcessData *, double);
 int  get_array_of_processes(FILE *, SimulatedProcessData*[]);
 void sort(SimulatedProcessData **, int, int);
 void FCFS(SimulatedProcessData *[], int);
@@ -127,7 +130,7 @@ void update_process_duration(SimulatedProcessData *, double);
 void suspend_until(int);
 void PS(SimulatedProcessData *[], int);
 void init_scheduler_simulation(SchedulerModel, const char *);
-void handle_process_termination_status(SimulatedProcessData *, long);
+void handle_process_termination_status(SimulatedProcessUnit *);
 int get_process_quantum(int);
 void update_priority(SimulatedProcessData *, bool isInitial);
 void finish_process_arrival();
@@ -187,7 +190,7 @@ void init_scheduler_simulation(SchedulerModel model, const char *traceFilename){
     switch (model) {
         case FIRST_COME_FIRST_SERVED:      FCFS(processList, numProcesses); break;
         case SHORTEST_REMAINING_TIME_NEXT: SRTN(processList, numProcesses); break;
-        // case PRIORITY_SCHEDULING:          PS(processList, numProcesses); break;
+        case PRIORITY_SCHEDULING:          PS(processList, numProcesses); break;
         default: printf("Modelo não configurado\n"); exit(-1);
     }
     return;
@@ -274,6 +277,10 @@ void* process_creator(void *args) {
             // Cria a unidade de processo e armazena no vetor para join posterior
             SimulatedProcessUnit *processUnit = initialize_process_simulation_unit(processList[i]);
             update_priority(processUnit->processData, true);
+            //Define por padrão que o processo poderá rodar o seu burstTime inteiro
+            //No caso do PRIORITY_SCHEDULING, o quantumTime é definido dentro da própria thread gerenciadora.
+            double processQuantum = processUnit->processData->remainingTime;
+            set_quantum_time(processUnit->processData, processQuantum);
             threadArgs->processUnits[i] = processUnit;
             processUnit->cpuID = -1;
             i++;
@@ -373,13 +380,13 @@ bool should_preempt_SRTN() {
 
 void wait_for_finish_iminence() {
     SimulatedProcessUnit *shortest = NULL;
-    double minRemaining = 1e9;
+    double minRemaining = systemQueue.runningQueue[0]->processData->remainingTime;
 
-    for (int i = 0; i < AVAILABLE_CORES; i++) {
+    for (int i = 1; i < AVAILABLE_CORES; i++) {
         SimulatedProcessUnit *unit = systemQueue.runningQueue[i];
         if (unit != NULL) {
             double remaining = unit->processData->remainingTime;
-            if (remaining < minRemaining && remaining <= STANDARD_LATE) {
+            if (remaining < minRemaining && remaining <= EPSILON) {
                 shortest = unit;
                 minRemaining = remaining;
             }
@@ -465,42 +472,55 @@ void SRTN(SimulatedProcessData *processList[], int numProcesses) {
 >>>>>>>>>>>>>>>>>>>>>>>> Escalonamento por Prioridade <<<<<<<<<<<<<<<<<<<<<<<<<
 */
 
-void PS(SimulatedProcessData *processList[], int numProcesses) {
-    init_core_manager(&systemQueue, numProcesses, PRIORITY_SCHEDULING);
-    SimulatedProcessUnit **processUnits = malloc(numProcesses * sizeof(SimulatedProcessUnit *));
-    ThreadArgs args = { processUnits, processList, numProcesses };
+bool check_unfinished_processes() {
+    for (int i = 0; i < AVAILABLE_CORES; i++) {
+        if (systemQueue.runningQueue[i] != NULL) {
+            return true;
+        }
+    }
+    return false;
+}
 
+void PS(SimulatedProcessData * processList[], int numProcesses){
+    init_core_manager(&systemQueue, numProcesses, PRIORITY_SCHEDULING);
+    SimulatedProcessUnit **processUnits = malloc(numProcesses * sizeof(SimulatedProcessUnit*));
+    ThreadArgs args = { processUnits, processList, numProcesses };
+    
+    
     pthread_t creatorThread;
     pthread_create(&creatorThread, NULL, process_creator, &args);
     start_simulation_time();
-
-    while (!systemQueue.allProcessesArrived || !is_empty(&systemQueue)) {
+    
+    while (!systemQueue.allProcessesArrived || !is_empty(&systemQueue) || check_unfinished_processes()) {
         SimulatedProcessUnit *processUnit = NULL;
-
+    
         P(systemQueue.runningQueueMutex);
         while (!has_available_core()) {
             pthread_cond_wait(&systemQueue.wakeUpScheduler, &systemQueue.runningQueueMutex);
         }
         V(systemQueue.runningQueueMutex);
-
-        P(systemQueue.isAddingMutex);
-        while (!is_empty(&systemQueue) && has_available_core()) {
+        
+        P(systemQueue.schedulerMutex);
+        while (!is_empty(&systemQueue) && (has_available_core())) {
             processUnit = dequeue(&systemQueue);
             if (processUnit != NULL) {
                 long chosenCPU = get_available_core();
                 processUnit->cpuID = chosenCPU;
                 systemQueue.runningQueue[chosenCPU] = processUnit;
+                double processQuantum = processUnit->processData->remainingTime;
+                processQuantum = min(processQuantum, get_process_quantum(processUnit->processData->priority));
+                set_quantum_time(processUnit->processData, processQuantum);
                 allocate_cpu(processUnit->threadID, chosenCPU);
                 resume_thread(processUnit);
             }
-        }
-        V(systemQueue.isAddingMutex);
+        }    
+        V(systemQueue.schedulerMutex);
     }
-
+    
     pthread_join(creatorThread, NULL);
     join_simulation_threads(processUnits, numProcesses);
     write_context_switches_quantity();
-    clean_simulation_memory(processUnits, numProcesses, &systemQueue);
+    clean_simulation_memory(processUnits, numProcesses, &systemQueue); 
 }
 
 /*
@@ -532,26 +552,30 @@ int get_process_quantum(int priority){
     const int PRIORITY_RANGE = get_priority_range();
     const int QUANTUM_RANGE = get_quantum_range();
     double angularCoefficient = (double)(priority - MAX_PRIORITY) / PRIORITY_RANGE;
-    //Agora entendi porque falam que SO é de 5º período,
-    //Se eu não estivesse adiantado em LabNum teria perdido um bom tempo aqui.
-    return MIN_QUANTUM + (int)(angularCoefficient * QUANTUM_RANGE);
+    return MIN_QUANTUM + customRound(angularCoefficient * QUANTUM_RANGE);
 }
 
-void handle_process_termination_status(SimulatedProcessData *currentProcess, long cpuSlot) {
-    if (currentProcess->remainingTime <= 0) {
+void handle_process_termination_status(SimulatedProcessUnit *currentUnit) {
+    if (currentUnit->processData->remainingTime <= 0) {
         double endTime = get_elapsed_time_from(INITIAL_SIMULATION_TIME);
-        finish_process(currentProcess, endTime);
-        currentProcess->status = TERMINATED;
-        
+        finish_process(currentUnit->processData, endTime);
+        currentUnit->processData->status = TERMINATED;
         P(systemQueue.runningQueueMutex);
-        systemQueue.runningQueue[cpuSlot] = NULL;
+        systemQueue.runningQueue[currentUnit->cpuID] = NULL;
         pthread_cond_signal(&systemQueue.wakeUpScheduler);   
         V(systemQueue.runningQueueMutex);
-        
     } else {
+        currentUnit->processData->numPreemptions++;
+        update_priority(currentUnit->processData, false);
         increment_context_switch_counter();
-        reset_execution_time(currentProcess);
-        update_priority(currentProcess, false);
+        reset_execution_time(currentUnit->processData);
+        if (systemQueue.scheduler == PRIORITY_SCHEDULING) {
+            pause_thread(currentUnit);
+            enqueue(&systemQueue, currentUnit);
+            systemQueue.runningQueue[currentUnit->cpuID] = NULL;
+            currentUnit->cpuID = -1;
+            pthread_cond_signal(&systemQueue.wakeUpScheduler);
+        }
     }
 }
 
@@ -569,7 +593,7 @@ void consume_execution_time(SimulatedProcessData *process) {
     double startTime = get_current_time();
     double lastTime = startTime;
     double elapsedTime = 0;
-    double fullExecutionTime = process->remainingTime;
+    double fullExecutionTime = process->quantumTime;
 
     while (elapsedTime < fullExecutionTime) {
         double currentTime = get_current_time();
@@ -595,8 +619,9 @@ void *execute_process(void *args) {
         V(processUnit->pauseMutex);
         
         consume_execution_time(currentProcess);
+
+        handle_process_termination_status(processUnit);
         
-        handle_process_termination_status(currentProcess, processUnit->cpuID);
     }
     pthread_exit(0);
 }
@@ -630,11 +655,12 @@ Vulgo tentativa de lembrar o POO...
 
 void set_process_name(SimulatedProcessData *process, const char* name){ strcpy(process->name, name); }
 
-void set_process_arrival_time(SimulatedProcessData * process, const char * arrivalTime){ process->arrival = atof(arrivalTime); }
+void set_process_arrival_time(SimulatedProcessData * process, const char * arrivalTime){ process->arrival = atoi(arrivalTime); }
 
 void update_process_duration(SimulatedProcessData * process, double elapsedTime){ 
-    process->executionTime -= elapsedTime;
-    process->remainingTime -= elapsedTime; 
+    process->executionTime    -= elapsedTime;
+    process->remainingTime    -= elapsedTime; 
+    process->quantumRemaining -= elapsedTime;
 }
 
 //Caso ele seja preemptado, então o seu executionTime é resetado para poder ser comparado depois.
@@ -642,15 +668,16 @@ void reset_execution_time(SimulatedProcessData * process){ process->executionTim
 
 void set_process_deadline(SimulatedProcessData * process, const char * deadline){ process->deadline = atoi(deadline); }
 
-void set_process_id(SimulatedProcessData * process, int ID){ process->ID = ID; }
-
 void set_process_burst_time(SimulatedProcessData * process, const char * burstTime){
     process->burstTime     = atof(burstTime);
     process->remainingTime = atof(burstTime);
     process->executionTime = atof(burstTime);
 }
 
-void set_quantum_time(SimulatedProcessData * process, int quantumTime){ process->quantumTime = quantumTime; }
+void set_quantum_time(SimulatedProcessData * process, double quantumTime){ 
+    process->quantumTime = quantumTime;
+    process->quantumRemaining = quantumTime;
+}
 
 void set_process_priority(SimulatedProcessData * process, int priority){ process->priority = priority; }
 
@@ -668,13 +695,11 @@ bool parse_line_data(char * line, SimulatedProcessData * process){
         set_process_burst_time,
         set_process_deadline
     };
-    int processID = 1;
     char * parsed_data = strtok(line, FILE_SEPARATOR);  
     while (parsed_data != NULL) {
         if (currentParsedData < 4) {
             set_process_values[currentParsedData](process, parsed_data);
         }
-        set_process_id(process, processID++);
         parsed_data = strtok(NULL, FILE_SEPARATOR);
         currentParsedData++;
     }
@@ -840,17 +865,20 @@ void destroy_manager(CoreQueueManager *this) {
 
 void update_priority(SimulatedProcessData *process, bool isInitial) {
     int currentTime = customRound(get_elapsed_time_from(INITIAL_SIMULATION_TIME));
-    int overTime = process->deadline - currentTime - process->remainingTime;
+    int overTime = process->deadline - currentTime - customRound(process->remainingTime);
     if (overTime < 0) set_process_priority(process, MIN_PRIORITY);
     else {
         if (isInitial) {
             const int PRIORITY_RANGE = get_priority_range();
             if (overTime == 0)                  set_process_priority(process, MAX_PRIORITY);
             else if (overTime > PRIORITY_RANGE) set_process_priority(process, MIN_PRIORITY);
-            else                                set_process_priority(process, MAX_PRIORITY + overTime);
+            else                                set_process_priority(process, overTime  + MAX_PRIORITY);                             
         } else {
-            process->priority++;
-            if (process->priority > MIN_PRIORITY) set_process_priority(process, MIN_PRIORITY);
+            if (process->numPreemptions >= MAX_PREEMPTIONS_UNTIL_PROMOTION){
+                process->priority--;
+                process->numPreemptions = 0;
+                if (process->priority < MAX_PRIORITY) process->priority = MAX_PRIORITY;
+            }
         }
     }
 }
@@ -858,10 +886,10 @@ void update_priority(SimulatedProcessData *process, bool isInitial) {
 int compareProcessUnits(const SimulatedProcessUnit *p1, const SimulatedProcessUnit *p2, SchedulerModel scheduler) {
     switch(scheduler) {
         case FIRST_COME_FIRST_SERVED:      return p1->processData->arrival - p2->processData->arrival;
-        case SHORTEST_REMAINING_TIME_NEXT: return p1->processData->executionTime - p2->processData->executionTime;
+        case SHORTEST_REMAINING_TIME_NEXT: return customRound(p1->processData->executionTime - p2->processData->executionTime);
         case PRIORITY_SCHEDULING:{
             int priorityDiff = p2->processData->priority - p1->processData->priority;
-            return (priorityDiff != 0) ? priorityDiff : (p1->processData->executionTime - p2->processData->executionTime);            
+            return (priorityDiff != 0) ? priorityDiff : customRound(p1->processData->executionTime - p2->processData->executionTime);            
         }
         default: return 0;
     }

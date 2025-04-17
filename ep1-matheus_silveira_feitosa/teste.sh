@@ -1,7 +1,7 @@
 #!/bin/bash
 
-ARQUIVO_TRACE="entrada-esperado.txt"
-EXECUTAVEL="./a.out"
+ARQUIVO_TRACE="teste.txt"
+EXECUTAVEL="./ep1"
 
 
 if [ ! -f "$ARQUIVO_TRACE" ]; then
@@ -20,12 +20,15 @@ NOMES[1]="FCFS"
 NOMES[2]="SRTN"
 NOMES[3]="Prioridade"
 
-for tipo in 1; do
+for tipo in 3; do
     echo "==============================="
     echo " Testando ${NOMES[$tipo]} (tipo $tipo)"
     echo "-------------------------------"
-    for i in $(seq 5); do
+    for i in $(seq 10); do
         $EXECUTAVEL $tipo "$ARQUIVO_TRACE" "saida${i}-${NOMES[$tipo]}"
+        if [ $((i % 2)) -eq 0 ]; then
+            ./compara.sh "saida${i}-${NOMES[$tipo]}" "saida$((i-1))-${NOMES[$tipo]}"
+        fi
     done 
     echo
 done
