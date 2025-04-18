@@ -50,7 +50,7 @@
 
 
 /* Tamanho máximo para o buffer de leitura de linhas */
-//Nome = 32 + 3*9 (número de 3 digitos) + 3 espaços + \0 = 45
+/* Nome = 32 + 3*9 (número de 3 digitos) + 3 espaços + \0 = 45 */
 /* Dobramos esta quantia pois não há restrições quanto a deadline e tempo de chegada */
 #define MAX_LINE_SIZE                   90
 
