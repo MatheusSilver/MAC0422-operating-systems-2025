@@ -193,6 +193,9 @@ void check_startup(int args, char *argv[]);
  */
 void init(char *argv[]);
 
+
+/* >>>>>>>>>>>>>>>>>>>>>>>>> ALGORITMOS DE ESCALONAMENTO <<<<<<<<<<<<<<<<<<<<<<<< */
+
 /*!
  * @brief Inicializa o simulador de escalonamento com o modelo especificado.
  * @param model Modelo de escalonamento a ser utilizado.
@@ -200,8 +203,6 @@ void init(char *argv[]);
  * @param outputFilename Nome do arquivo de saída para os resultados da simulação.
  */
 void init_scheduler_simulation(SchedulerModel model, const char *traceFilename, const char *outputFilename);
-
-/* >>>>>>>>>>>>>>>>>>>>>>>>> ALGORITMOS DE ESCALONAMENTO <<<<<<<<<<<<<<<<<<<<<<<< */
 
 /*!
  * @brief Executa o algoritmo de escalonamento FCFS (First Come First Served).
@@ -251,7 +252,19 @@ void *execute_process(void * processToExecute);
  */
 void consume_execution_time(SimulatedProcessData *process);
 
+/*!
+ * @brief Verifica e rearranja o processo simulado no momento em que este tem sua execução finalizada ou interrompida.
+ * @param currentUnit Ponteiro para a unidade de processo a ser verificada.
+ */
+void handle_process_termination_status(SimulatedProcessUnit *currentUnit);
+
 /* >>>>>>>>>>>>>>>>>> UTILIDADES DE GERÊNCIA DE PROCESSOS <<<<<<<<<<<<<<<<<<<<<<< */
+
+/*!
+ * @brief Congela temporariamente a execução de uma unidade até que ela seja despausada.
+ * @param unit Ponteiro para a unidade de simulação pausada.
+ */
+void wait_unpause(SimulatedProcessUnit *unit);
 
 /*!
  * @brief pausa a execução de um processo simulado.
@@ -326,20 +339,6 @@ long get_available_core();
 void allocate_cpu(pthread_t targetProcess, long chosenCPU);
 
 /*!
- * @brief Atualiza a duração de execução de um processo simulado.
- * @param process Ponteiro para a unidade de processo a ser atualizada. 
- * @param elapsedTime Tempo passado desde a última atualização.
- */
-void update_process_duration(SimulatedProcessData *process, double elapsedTime);
-
-/*!
- * @brief Atualiza a prioridade de um processo simulado, ou define a prioridade inicial.
- * @param process Ponteiro para a unidade de processo a ser atualizada.
- * @param isInitial Flag que indica se primeira vez que definimos a prioridade de um processo. 
- */
-void update_priority(SimulatedProcessData *process, bool isInitial);
-
-/*!
  * @brief Incrementa de maneira protegida, o contador de preempções de um processo simulado.
  */
 void increment_context_switch_counter();
@@ -350,12 +349,6 @@ void increment_context_switch_counter();
  * @param num_threads Número de threads que devem ser finalizadas.
  */
 void join_simulation_threads(SimulatedProcessUnit **simulationUnits, int numThreads);
-
-/*!
- * @brief Suspende a thread até que o tempo indicado seja atingido.
- * @param nextArrival Tempo em que a thread deve ser acordada.
- */
-void suspend_until(int nextArrival);
 
 /* >>>>>>>>>>>>>>>>>>>>>>>>> FUNÇÕES DO CORE MANAGER <<<<<<<<<<<<<<<<<<<<<<<<<<<<< */
 
@@ -384,15 +377,9 @@ void enqueue(CoreQueueManager *this, SimulatedProcessUnit *processUnit);
 /*!
  * @brief Remove uma unidade de processo da fila de prontos.
  * @param this Ponteiro para o gerenciador de filas.
- * @return Unidade de processo removida da fila.
+ * @return Unidade ponteiro do processo removido da fila.
  */
 SimulatedProcessUnit *dequeue(CoreQueueManager *this);
-
-/*!
- * @brief Libera a memória alocada para o gerenciador de filas e seus mutexes.
- * @param this Ponteiro para o gerenciador de filas.
- */
-void destroy_manager(CoreQueueManager *this);
 
 /*!
  * @brief Retorna o elemento na frente da fila de prontos sem removê-lo.
@@ -400,6 +387,13 @@ void destroy_manager(CoreQueueManager *this);
  * @return Unidade de processo na frente da fila.
  */
 SimulatedProcessUnit *peek_queue_front(CoreQueueManager *this);
+
+/*!
+ * @brief Libera a memória alocada para o gerenciador de filas e seus mutexes.
+ * @param this Ponteiro para o gerenciador de filas.
+ */
+void destroy_manager(CoreQueueManager *this);
+
 
 /* >>>>>>>>>>>>>>>>>>>>>>>>> UTILIDADES DO STRUCT <<<<<<<<<<<<<<<<<<<<<<<<< */
 
@@ -461,6 +455,20 @@ void set_quantum_time(SimulatedProcessData * process, double quantumTime);
  * @param priority Prioridade a ser atribuída ao processo.
  */
 void set_process_priority(SimulatedProcessData * process, int priority);
+
+/*!
+ * @brief Atualiza a prioridade de um processo simulado, ou define a prioridade inicial.
+ * @param process Ponteiro para a unidade de processo a ser atualizada.
+ * @param isInitial Flag que indica se primeira vez que definimos a prioridade de um processo. 
+ */
+void update_priority(SimulatedProcessData *process, bool isInitial);
+
+/*!
+ * @brief obtem o quantum de um processo a partir da sua prioridade
+ * @param priority prioridade do processo
+ * @return quantum do processo
+ */
+int get_process_quantum(int priority);
 
 /* >>>>>>>>>>>>>>>>>>>>>>>>> UTILIDADES DE ARQUIVO <<<<<<<<<<<<<<<<<<<<<<<<< */
 
@@ -534,25 +542,10 @@ int get_priority_range();
 int get_quantum_range();
 
 /*!
- * @brief obtem o quantum de um processo a partir da sua prioridade
- * @param priority prioridade do processo
- * @return quantum do processo
- */
-int get_process_quantum(int priority);
-
-/*!
  * @brief Inicializa a variável INITIAL_SIMULATION_TIME com o tempo atual do sistema.
  */
 void start_simulation_time();
 
-/*!
- * @brief Ordena um array de processos simulados com base no tempo de chegada.
- * @note Utiliza o algoritmo MergeSort.
- * @param arr Array de processos a serem ordenados.
- * @param left Índice esquerdo do array.
- * @param right Índice direito do array.
- */
-void sort(SimulatedProcessData **arr, int left, int right);
 
 /*!
  * @brief Escreve num arquivo de saida pré-definido, o número de trocas de contexto.
@@ -572,7 +565,22 @@ double get_current_time();
  */
 double get_elapsed_time_from(double startTime);
 
-/* >>>>>>>>>>>>>>>>>>>>>>>> FUNÇÕES DE ENCERRAMENTO <<<<<<<<<<<<<<<<<<<<<<<< */
+/*!
+ * @brief Suspende a thread até que o tempo indicado seja atingido.
+ * @param nextArrival Tempo em que a thread deve ser acordada.
+ */
+void suspend_until(int nextArrival);
+
+/*!
+ * @brief Ordena um array de processos simulados com base no tempo de chegada.
+ * @note Utiliza o algoritmo MergeSort.
+ * @param arr Array de processos a serem ordenados.
+ * @param left Índice esquerdo do array.
+ * @param right Índice direito do array.
+ */
+void sort(SimulatedProcessData **arr, int left, int right);
+
+/* >>>>>>>>>>>>>>>>>>>>>>>> FUNÇÕES DE LIMPEZA <<<<<<<<<<<<<<<<<<<<<<<< */
 
 /*! 
  * @brief Libera memória e destrói mutexes 
@@ -583,5 +591,6 @@ void clean_simulation_memory(SimulatedProcessUnit **processUnities, int numProce
  * @brief Finaliza simulação e threads auxiliares 
  */
 void finish_scheduler_simulation(pthread_t creatorThread);
+
 
 #endif /* EP1_H */
