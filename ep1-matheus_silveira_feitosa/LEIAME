@@ -4,13 +4,13 @@ Para o uspsh, precisamos de:
 1- GNU readline
 2- GNU history
 
-E podemos instalar elas fazendo:
+E podemos instalar elas fazendo (Em Debian ou derivados):
 > sudo apt-get install libreadline-dev
 
 E para o ep1, precisamos de:
 1- POSIX threads 
 
-Caso ela não tenha vindo por padrão na sua distribuição Linux, podemos instalá-la fazendo:
+Caso ela não tenha vindo por padrão na sua distribuição Linux, podemos instalá-la fazendo (Em Debian ou derivados):
 > sudo apt install libc6-dev
 
 Com isso, podemos compilar, os dois programas usando o Makefile. Para isso, basta executar o comando make no mesmo diretório que o arquivo Makefile.
