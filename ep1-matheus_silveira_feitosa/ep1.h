@@ -316,11 +316,12 @@ bool should_preempt_SRTN();
 SimulatedProcessUnit *get_longest_running_process(CoreQueueManager *this);
 
 /*!
- * @brief Verifica se há algum processo prestes a terminar na fila de rodando.
+ * @brief Verifica se há algum processo prestes a terminar na fila de rodando e espera ele terminar.
+ * @return True se houve algum processo finalizado durante a espera liberando a CPU, false caso nenhum processo estivesse perto de terminar.
  * @note Se houver, então ele irá segurar a thread até que tal processo termine.abort
  * @note Dizemos que um processo está prestes a terminar quando seu tempo restante for menor que 0.25 segundos.
  */
-void wait_for_finish_iminence();
+bool wait_for_finish_iminence();
 
 /*!
  * @brief Verifica se há núcleos disponíveis para alocar um processo.

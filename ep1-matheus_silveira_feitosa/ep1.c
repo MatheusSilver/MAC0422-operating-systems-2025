@@ -136,6 +136,7 @@ void FCFS(){
 
 void SRTN() {
     pthread_t creatorThread;
+    bool hasAvailableCore;
     bool shouldPreempt;
 
     /* Similarmente para o caso do FCFS começamos iniciando os mecanismos utilizados pelo escalonador */
@@ -162,16 +163,16 @@ void SRTN() {
             /* Essa condição a mais foi por motivos de que, eventualmente por motivos de concorrência da CPU */
             /* Alguns processos não estavam conseguindo terminar no instante exato, mas sim alguns milésimos de segundo depois*/
             /* Com isso, a função abaixo aguarda estes processos na iminência de terminarem para não fazer uma preempção indevida. */
-            if (!has_available_core()) wait_for_finish_iminence();
-
             shouldPreempt = should_preempt_SRTN();
+            hasAvailableCore = has_available_core();
+            if (shouldPreempt && !hasAvailableCore) { hasAvailableCore = wait_for_finish_iminence(); }
             processUnit = dequeue(&systemQueue);
             if (processUnit == NULL) break;
 
             /* Se uma preempção for pedida, mas houver cores livres, então simplesmente inserimos o processo */
             /* Na CPU livre mesmo. */
             P(systemQueue.runningQueueMutex);
-            if (shouldPreempt && !has_available_core()) {
+            if (shouldPreempt && !hasAvailableCore) {
                 SimulatedProcessUnit *longestRunningProcess = get_longest_running_process(&systemQueue);
                 if (longestRunningProcess != NULL) { 
                     preempt_process(longestRunningProcess);
@@ -444,7 +445,7 @@ SimulatedProcessUnit* get_longest_running_process(CoreQueueManager *this) {
     return longest;
 }
 
-void wait_for_finish_iminence() {
+bool wait_for_finish_iminence() {
     int i;
     SimulatedProcessUnit *shortest = NULL;
     double minRemaining = systemQueue.runningQueue[0]->processData->remainingTime;
@@ -462,7 +463,7 @@ void wait_for_finish_iminence() {
 
     /* Se nenhum processo estiver com tempo restante menor que 0.25, significa que nenhum processo atual está prestes a terminar. */
     /* Então podemos liberar o escalonador */
-    if (shortest == NULL) return;
+    if (shortest == NULL) return false;
 
     /* Caso contrário, aguardamos um curto período de tempo para que o processo informe que terminou e acorde o escalonador. */
     P(systemQueue.runningQueueMutex);
@@ -470,6 +471,7 @@ void wait_for_finish_iminence() {
         pthread_cond_wait(&systemQueue.wakeUpScheduler, &systemQueue.runningQueueMutex);
     }
     V(systemQueue.runningQueueMutex);
+    return true;
 }
 
 bool has_available_core()     { return get_available_core() != -1; }
