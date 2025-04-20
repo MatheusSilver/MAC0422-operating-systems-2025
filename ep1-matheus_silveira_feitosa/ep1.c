@@ -1,5 +1,8 @@
 #include "ep1.h"
 
+/* Fato curioso, adaptei o código inteiro para ser funcional também com C89 (ele ainda funciona compilando normal.) */
+/* Motivo? gostei de ser desafiado pelo Ernesto nas monitorias de MAC0115... */
+
 /* >>>>>>>>>>>>>>>>>>>>>>>>> VARIÁVEIS GLOBAIS <<<<<<<<<<<<<<<<<<<<<<<<< */
 
 SimulatedProcessUnit **processUnits;
@@ -17,6 +20,9 @@ double INITIAL_SIMULATION_TIME;
 unsigned int contextSwitches = 0;
 
 int numProcesses;
+
+int finishedProcesses = 0;
+
 int AVAILABLE_CORES;
 
 int main(int args, char* argv[]){
@@ -28,11 +34,12 @@ int main(int args, char* argv[]){
 /* >>>>>>>>>>>>>>>>>>>>>>>>> INICIALIZAÇÃO DO SIMULADOR <<<<<<<<<<<<<<<<<<<<<<<<< */
 
 void check_startup(int args, char* argv[]){
-    int schedulerID = atoi(argv[1]);
+    int schedulerID;
     if (args != 4) {
         printf("Uso: %s <id_escalonador> <arquivo_trace> <arquivo_saida>\n", argv[0]);
         exit(-1);
     }
+    schedulerID = atoi(argv[1]);
     if (schedulerID < 1 || schedulerID > 3) {
         printf("Escolha um escalonador válido:\n");
         printf("\t1 = FIRST_COME_FIRST_SERVED\n");
@@ -98,7 +105,7 @@ void FCFS(){
     /* Para este caso, como nenhum processo será removido da fila */
     /* Escalonamos os processos até que todos os processos tenham sido inseridos e a fila de prontos esteja vazia */
     /* Isto é, todos os processos já rodaram. */
-    while (!systemQueue.allProcessesArrived || !is_empty(&systemQueue)) {
+    while (!systemQueue.allProcessesArrived || !all_processes_finished()) {
         SimulatedProcessUnit *processUnit = NULL;
     
         /* Enquanto não houver CPUs disponíveis, suspende o escalonador até que */
@@ -114,7 +121,10 @@ void FCFS(){
         P(systemQueue.schedulerMutex);
         if (!is_empty(&systemQueue) && has_available_core()) {
             processUnit = dequeue(&systemQueue);
-            if (processUnit != NULL) { dispatch_process(processUnit); }
+            
+            if (processUnit == NULL) break; 
+            
+            dispatch_process(processUnit); 
         }    
         V(systemQueue.schedulerMutex);
     }
@@ -126,7 +136,7 @@ void FCFS(){
 
 void SRTN() {
     pthread_t creatorThread;
-    bool shouldPreempt, hasAvailableCore;
+    bool shouldPreempt;
 
     /* Similarmente para o caso do FCFS começamos iniciando os mecanismos utilizados pelo escalonador */
     init_core_manager(&systemQueue, numProcesses, SHORTEST_REMAINING_TIME_NEXT);
@@ -134,7 +144,7 @@ void SRTN() {
     pthread_create(&creatorThread, NULL, process_creator, NULL);
     start_simulation_time();
 
-    while (!systemQueue.allProcessesArrived || !is_empty(&systemQueue)) {
+    while (!systemQueue.allProcessesArrived || !all_processes_finished()) {
         SimulatedProcessUnit *processUnit = NULL;
 
         P(systemQueue.runningQueueMutex);
@@ -155,17 +165,20 @@ void SRTN() {
             if (!has_available_core()) wait_for_finish_iminence();
 
             shouldPreempt = should_preempt_SRTN();
-            hasAvailableCore = has_available_core();
             processUnit = dequeue(&systemQueue);
-            if (processUnit != NULL) {
-                /* Se uma preempção for pedida, mas houver cores livres, então simplesmente inserimos o processo */
-                /* Na CPU livre mesmo. */
-                if (shouldPreempt && !hasAvailableCore) {
-                    SimulatedProcessUnit *longestRunningProcess = get_longest_running_process(&systemQueue);
-                    if (longestRunningProcess != NULL) { preempt_process(longestRunningProcess); }
+            if (processUnit == NULL) break;
+
+            /* Se uma preempção for pedida, mas houver cores livres, então simplesmente inserimos o processo */
+            /* Na CPU livre mesmo. */
+            P(systemQueue.runningQueueMutex);
+            if (shouldPreempt && !has_available_core()) {
+                SimulatedProcessUnit *longestRunningProcess = get_longest_running_process(&systemQueue);
+                if (longestRunningProcess != NULL) { 
+                    preempt_process(longestRunningProcess);
                 }
-                dispatch_process(processUnit); 
             }
+            dispatch_process(processUnit); 
+            V(systemQueue.runningQueueMutex);
         }
         V(systemQueue.schedulerMutex);
     }
@@ -175,6 +188,7 @@ void SRTN() {
 /* >>>>>>>>>>>>>>>>>>>>>>>> ESCALONAMENTO POR PRIORIDADE <<<<<<<<<<<<<<<<<<<<<<<<< */
 
 void PS(){
+    double processQuantum;
     pthread_t creatorThread;
 
     /* Inicializando assim como nos casos anteriores os mecanismos de gerenciamento. */
@@ -182,14 +196,13 @@ void PS(){
     pthread_create(&creatorThread, NULL, process_creator, NULL);
     start_simulation_time();
 
-    while (!systemQueue.allProcessesArrived || !is_empty(&systemQueue) || has_available_core()) {
+    while (!systemQueue.allProcessesArrived || !all_processes_finished()) {
         SimulatedProcessUnit *processUnit = NULL;
-    
+        
         P(systemQueue.runningQueueMutex);
         while (!has_available_core()) {
             pthread_cond_wait(&systemQueue.wakeUpScheduler, &systemQueue.runningQueueMutex);
         }
-        V(systemQueue.runningQueueMutex);
         
         P(systemQueue.schedulerMutex);
         /* Similarmente ao FCFS, o Escalonamento por prioridade também espera que o core esteja livre  */
@@ -197,15 +210,17 @@ void PS(){
         /* É executado enquanto houverem quantums para ele, assim que seus quantums acabam, acorda novamente o escalonador. */
         while (!is_empty(&systemQueue) && (has_available_core())) {
             processUnit = dequeue(&systemQueue);
-            if (processUnit != NULL) {
-                double processQuantum = processUnit->processData->remainingTime;
-                processQuantum = min(processQuantum, get_process_quantum(processUnit->processData->priority));
-                set_quantum_time(processUnit->processData, processQuantum);
-                dispatch_process(processUnit);
-            }
+            if (processUnit == NULL) break;
+            
+            processQuantum = processUnit->processData->remainingTime;
+            processQuantum = min(processQuantum, get_process_quantum(processUnit->processData->priority));
+            set_quantum_time(processUnit->processData, processQuantum);
+            dispatch_process(processUnit);
         }    
         V(systemQueue.schedulerMutex);
+        V(systemQueue.runningQueueMutex);
     }
+
     finish_scheduler_simulation(creatorThread);
 }
 
@@ -281,10 +296,10 @@ void finish_process_arrival(){
 
 void *execute_process(void * processToExecute) {
     SimulatedProcessUnit *processUnit = (SimulatedProcessUnit *)processToExecute;
-    /* Enquanto o tempo restante for maior do que 0, significa que o processo não terminou de executar */
+    /* Enquanto o próprio processo não falar que encerrou, ou então, alguém forçar o término do processo, ele irá continuar rodando. */
     /* Com isso, ele espera a ordem do Escalonador, depois executa sua função no "consume_execution_time" */
     /* Dependendo, do que ocorrer na sua execução e ele sair, verificamos como proceder com o processo em "handle_process_termination_status" */
-    while (processUnit->processData->remainingTime > 0) {
+    while (processUnit->processData->status != TERMINATED) {
         wait_unpause(processUnit);
         consume_execution_time(processUnit->processData);
         handle_process_termination_status(processUnit);
@@ -320,6 +335,7 @@ void handle_process_termination_status(SimulatedProcessUnit *currentUnit) {
         P(systemQueue.runningQueueMutex);
         systemQueue.runningQueue[currentUnit->cpuID] = NULL;
         pthread_cond_signal(&systemQueue.wakeUpScheduler);   
+        finishedProcesses++;
         V(systemQueue.runningQueueMutex);
     } else {
         currentUnit->processData->numPreemptions++;
@@ -328,8 +344,10 @@ void handle_process_termination_status(SimulatedProcessUnit *currentUnit) {
         reset_execution_time(currentUnit->processData);
 
         if (systemQueue.scheduler == PRIORITY_SCHEDULING) {
+            P(systemQueue.runningQueueMutex);
             preempt_process(currentUnit);
             pthread_cond_signal(&systemQueue.wakeUpScheduler);
+            V(systemQueue.runningQueueMutex);
         }
     }
 }
@@ -364,16 +382,18 @@ void resume_process(SimulatedProcessUnit *unit) {
 
 void dispatch_process(SimulatedProcessUnit *unit) {
     /* Aloca uma CPU e faz o processo ser executado lá. */
-    long cpu = get_available_core();
+    long cpu;
+    cpu = get_available_core();
     unit->cpuID = cpu;
-    systemQueue.runningQueue[cpu] = unit;
+    systemQueue.runningQueue[cpu] = unit;    
     allocate_cpu(unit->threadID, cpu);
     resume_process(unit);
 }
 
 void preempt_process(SimulatedProcessUnit *unit) {
     /* Interrompe o processo e desvincula o processo da CPU previamente destinada a ele. */
-    long cpu = unit->cpuID;
+    long cpu;
+    cpu = unit->cpuID;
     pause_process(unit);
     enqueue(&systemQueue, unit);
     systemQueue.runningQueue[cpu] = NULL;
@@ -413,7 +433,7 @@ bool should_preempt_SRTN() {
 SimulatedProcessUnit* get_longest_running_process(CoreQueueManager *this) {
     SimulatedProcessUnit *longest = NULL;
     double largestExecutionTime = -1;
-    int i = 0;
+    int i;
     
     for (i = 0; i < AVAILABLE_CORES; i++) {
         if (this->runningQueue[i] != NULL && this->runningQueue[i]->processData->executionTime > largestExecutionTime) {
@@ -425,9 +445,9 @@ SimulatedProcessUnit* get_longest_running_process(CoreQueueManager *this) {
 }
 
 void wait_for_finish_iminence() {
+    int i;
     SimulatedProcessUnit *shortest = NULL;
     double minRemaining = systemQueue.runningQueue[0]->processData->remainingTime;
-    int i = 1;
 
     for (i = 1; i < AVAILABLE_CORES; i++) {
         SimulatedProcessUnit *unit = systemQueue.runningQueue[i];
@@ -452,7 +472,9 @@ void wait_for_finish_iminence() {
     V(systemQueue.runningQueueMutex);
 }
 
-bool has_available_core() { return get_available_core() != -1; }
+bool has_available_core()     { return get_available_core() != -1; }
+
+bool all_processes_finished() { return numProcesses <= finishedProcesses; }
 
 long get_available_core() {
     long i = 0;
@@ -525,7 +547,7 @@ void swap(CoreQueueManager *this, int sourceIndex, int targetIndex) { this->read
 
 /* Usamos InsertionSort pra manter a estabilidade e também por motivos de ser mais rápido que MergeSort para arrays pequenos. */
 void ordered_insert(CoreQueueManager *this, SimulatedProcessUnit *processUnit) {
-    int i = 0;
+    int i;
     int insertPos = this->length;
     for(i = 0; i < this->length; i++) {
         int index = circular_index(this, i);
@@ -603,6 +625,7 @@ void set_process_arrival_time(SimulatedProcessData * process, const char * arriv
 void update_process_duration(SimulatedProcessData * process, double elapsedTime){ 
     process->executionTime    -= elapsedTime;
     process->remainingTime    -= elapsedTime;
+    process->quantumTime      -= elapsedTime;
 }
 
 /*Caso ele seja preemptado, então o seu executionTime é resetado para poder ser comparado depois assim como visto em aula. */
@@ -632,7 +655,7 @@ void update_priority(SimulatedProcessData *process, bool isInitial) {
             else                                set_process_priority(process, overTime  + MAX_PRIORITY);                             
         } else {
             if (process->numPreemptions >= MAX_PREEMPTIONS_UNTIL_PROMOTION){
-                process->priority--;
+                process->priority++;
                 process->numPreemptions = 0;
                 if (process->priority < MAX_PRIORITY) process->priority = MAX_PRIORITY;
             }
@@ -674,9 +697,12 @@ bool parse_line_data(char * line, SimulatedProcessData * process){
     };
     char * parsed_data = strtok(line, FILE_SEPARATOR);  
     while (parsed_data != NULL) {
-        if (currentParsedData < 4) {
-            set_process_values[currentParsedData](process, parsed_data);
-        }
+        if (currentParsedData < 4) { set_process_values[currentParsedData](process, parsed_data); }
+        
+        /* Caso extremamente específico de erro quando o último valor de uma linha de trace é simplesmente " " */
+        /* Isto é, colocamos os 3 valores e na hora do último, colocamos apenas um espaço e pulamos uma linha. */
+        /* Provavelmente não será avaliado, mas me tomou uns bons 10 minutos achando que meu algoritmo de prioridade estava errado. */
+        if (strcmp(parsed_data, "\r\n")==0) return true;
         parsed_data = strtok(NULL, FILE_SEPARATOR);
         currentParsedData++;
     }
@@ -726,7 +752,7 @@ double get_current_time() {
 
 void destroy_process_unit(SimulatedProcessUnit *unit) {
     pthread_mutex_destroy(&unit->pauseMutex);
-    pthread_cond_destroy(&unit->pauseCond);
+    pthread_cond_destroy(&unit->pauseCond); 
     free(unit->processData);
     free(unit);
 }

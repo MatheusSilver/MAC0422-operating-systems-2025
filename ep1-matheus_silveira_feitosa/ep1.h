@@ -161,6 +161,9 @@ extern SimulatedProcessUnit **processUnits;
 extern SimulatedProcessData **processList;
 extern int numProcesses;
 
+/* Auxiliar para manter controle sobre se ainda há processos não finalizados */
+extern int finishedProcesses;
+
 /* Controlador de acesso a Queue */
 extern CoreQueueManager systemQueue;
 
@@ -330,6 +333,12 @@ bool has_available_core();
  * @return ID do núcleo disponível na fila de rodando.
  */
 long get_available_core();
+
+/*!
+ * @brief Verifica se todos os processos terminaram suas execuções
+ * @return true se todos tiverem sido concluídos, false caso contrário. 
+ */
+bool all_processes_finished();
 
 /*!
  * @brief Destina um núcleo específico para um processo simulado.
