@@ -27,7 +27,7 @@ for path in paths:
 algs = ['FCFS', 'SRTN', 'Prioridade']
 
 # 3) Parâmetro de passo para os ticks do eixo Y
-y_step = 4
+y_step = 2
 
 # --- Gráfico 1: deadlines cumpridas (entrada‑esperado) ---
 values1 = [deadlines_met[a] for a in algs]

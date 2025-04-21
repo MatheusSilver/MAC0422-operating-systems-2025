@@ -1,8 +1,5 @@
 #include "ep1.h"
 
-/* Fato curioso, adaptei o código inteiro para ser funcional também com C89 (ele ainda funciona compilando normal.) */
-/* Motivo? gostei de ser desafiado pelo Ernesto nas monitorias de MAC0115... */
-
 /* >>>>>>>>>>>>>>>>>>>>>>>>> VARIÁVEIS GLOBAIS <<<<<<<<<<<<<<<<<<<<<<<<< */
 
 SimulatedProcessUnit **processUnits;
@@ -172,7 +169,7 @@ void SRTN() {
             /* Se uma preempção for pedida, mas houver cores livres, então simplesmente inserimos o processo */
             /* Na CPU livre mesmo. */
             P(systemQueue.runningQueueMutex);
-            if (shouldPreempt && !hasAvailableCore) {
+            if (!hasAvailableCore && shouldPreempt) {
                 SimulatedProcessUnit *longestRunningProcess = get_longest_running_process(&systemQueue);
                 if (longestRunningProcess != NULL) { 
                     preempt_process(longestRunningProcess);
@@ -192,7 +189,7 @@ void PS(){
     double processQuantum;
     pthread_t creatorThread;
 
-    /* Inicializando assim como nos casos anteriores os mecanismos de gerenciamento. */
+    /* Inicializando assim como nos casos anteriores, os mecanismos de gerenciamento. */
     init_core_manager(&systemQueue, numProcesses, PRIORITY_SCHEDULING);
     pthread_create(&creatorThread, NULL, process_creator, NULL);
     start_simulation_time();
@@ -209,7 +206,7 @@ void PS(){
         /* Similarmente ao FCFS, o Escalonamento por prioridade também espera que o core esteja livre  */
         /* Entretanto, ele define para cada processo, uma quantidade quantums especifica, e o processo */
         /* É executado enquanto houverem quantums para ele, assim que seus quantums acabam, acorda novamente o escalonador. */
-        while (!is_empty(&systemQueue) && (has_available_core())) {
+        while (!is_empty(&systemQueue) && has_available_core()) {
             processUnit = dequeue(&systemQueue);
             if (processUnit == NULL) break;
             
@@ -297,8 +294,8 @@ void finish_process_arrival(){
 
 void *execute_process(void * processToExecute) {
     SimulatedProcessUnit *processUnit = (SimulatedProcessUnit *)processToExecute;
-    /* Enquanto o próprio processo não falar que encerrou, ou então, alguém forçar o término do processo, ele irá continuar rodando. */
-    /* Com isso, ele espera a ordem do Escalonador, depois executa sua função no "consume_execution_time" */
+        /* Enquanto o próprio processo não falar que encerrou, ou então, alguém forçar o término do processo, ele irá continuar rodando. */
+                    /* Com isso, ele espera a ordem do Escalonador, depois executa sua função no "consume_execution_time" */
     /* Dependendo, do que ocorrer na sua execução e ele sair, verificamos como proceder com o processo em "handle_process_termination_status" */
     while (processUnit->processData->status != TERMINATED) {
         wait_unpause(processUnit);
@@ -314,7 +311,9 @@ void consume_execution_time(SimulatedProcessData *process) {
     double elapsedTime = 0;
     double fullExecutionTime = process->quantumTime;
 
-    /* Este seria o loop de execução, dizemos que o progresso do processo é dado pela execução do remainingTime */
+    /* Este seria o loop de execução, dizemos que o progresso do processo é dado pela redução ou do seu remainingTime */
+        /* Ou do quantum destinado a si próprio, optamos por isso pois não foi bem definida qual seria a operação */
+                /* E esta parecia ser a forma mais "natural" de marcar como o processo estava progredindo. */
     while (elapsedTime < fullExecutionTime) {
         double currentTime = get_current_time();
         double interval = currentTime - lastTime;
@@ -397,7 +396,9 @@ void preempt_process(SimulatedProcessUnit *unit) {
     cpu = unit->cpuID;
     pause_process(unit);
     enqueue(&systemQueue, unit);
-    systemQueue.runningQueue[cpu] = NULL;
+    /* Teste de sanidade para garantirmos que nenhum outro processo irá tentar limpar outro que não seja si próprio da CPU. */
+    /* Em geral não é usado, mas é só uma garantia. */
+    if (systemQueue.runningQueue[cpu] == unit) systemQueue.runningQueue[cpu] = NULL;
     unit->cpuID = -1;
 }
 
@@ -668,7 +669,7 @@ void update_priority(SimulatedProcessData *process, bool isInitial) {
 int get_process_quantum(int priority){
     const int PRIORITY_RANGE = get_priority_range();
     const int QUANTUM_RANGE  = get_quantum_range();
-    double angularCoefficient = (double)(priority - MAX_PRIORITY) / PRIORITY_RANGE;
+    double angularCoefficient = (double)((priority - MAX_PRIORITY) / PRIORITY_RANGE);
     return MIN_QUANTUM + customRound(angularCoefficient * QUANTUM_RANGE);
 }
 
@@ -746,7 +747,6 @@ void write_context_switches_quantity(){
 }
 
 double get_current_time() {
-    /* Copiado diretamente da manPage de time.h */
     struct timespec time;
     clock_gettime(CLOCK_MONOTONIC, &time);
     return time.tv_sec + time.tv_nsec / 1e9;

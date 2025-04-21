@@ -21,6 +21,7 @@
 
 /* Usado para a syscall sysconf(_SC_NPROCESSORS_ONLN) */
 /* Que retorna o número de CPU's ativas na máquina */
+/* Optamos por uma syscall que é garantido existir em qualquer sistema Linux*/
 #include <unistd.h>
 
 /* Usada para o controle de tempo dos processos */
