@@ -1,0 +1,471 @@
+===============================
+ Testando FCFS (tipo 1)
+-------------------------------
+======================================
+Diferenças entre saida2-FCFS-entrada-esperado.txt e saida1-FCFS-entrada-esperado.txt:
+======================================
+======================================
+Diferenças entre saida4-FCFS-entrada-esperado.txt e saida3-FCFS-entrada-esperado.txt:
+======================================
+======================================
+Diferenças entre saida6-FCFS-entrada-esperado.txt e saida5-FCFS-entrada-esperado.txt:
+======================================
+======================================
+Diferenças entre saida8-FCFS-entrada-esperado.txt e saida7-FCFS-entrada-esperado.txt:
+======================================
+======================================
+Diferenças entre saida10-FCFS-entrada-esperado.txt e saida9-FCFS-entrada-esperado.txt:
+======================================
+======================================
+Diferenças entre saida12-FCFS-entrada-esperado.txt e saida11-FCFS-entrada-esperado.txt:
+======================================
+======================================
+Diferenças entre saida14-FCFS-entrada-esperado.txt e saida13-FCFS-entrada-esperado.txt:
+======================================
+======================================
+Diferenças entre saida16-FCFS-entrada-esperado.txt e saida15-FCFS-entrada-esperado.txt:
+======================================
+======================================
+Diferenças entre saida18-FCFS-entrada-esperado.txt e saida17-FCFS-entrada-esperado.txt:
+======================================
+======================================
+Diferenças entre saida20-FCFS-entrada-esperado.txt e saida19-FCFS-entrada-esperado.txt:
+======================================
+======================================
+Diferenças entre saida22-FCFS-entrada-esperado.txt e saida21-FCFS-entrada-esperado.txt:
+======================================
+======================================
+Diferenças entre saida24-FCFS-entrada-esperado.txt e saida23-FCFS-entrada-esperado.txt:
+======================================
+======================================
+Diferenças entre saida26-FCFS-entrada-esperado.txt e saida25-FCFS-entrada-esperado.txt:
+======================================
+======================================
+Diferenças entre saida28-FCFS-entrada-esperado.txt e saida27-FCFS-entrada-esperado.txt:
+======================================
+======================================
+Diferenças entre saida30-FCFS-entrada-esperado.txt e saida29-FCFS-entrada-esperado.txt:
+======================================
+
+===============================
+ Testando SRTN (tipo 2)
+-------------------------------
+./teste.sh, linha 17:  5476 Falha de segmentação  (imagem do núcleo gravada) $EXECUTAVEL $tipo "${arquivo}" "saida${i}-${NOMES[$tipo]}-$arquivo"
+======================================
+Diferenças entre saida2-SRTN-entrada-esperado.txt e saida1-SRTN-entrada-esperado.txt:
+======================================
+proc4 30 30 0						      |	proc4 20 20 0
+proc5 22 22 0						      |	proc5 30 30 0
+======================================
+Diferenças entre saida4-SRTN-entrada-esperado.txt e saida3-SRTN-entrada-esperado.txt:
+======================================
+proc4 30 30 0						      |	proc4 20 20 0
+proc5 22 22 0						      |	proc5 30 30 0
+======================================
+Diferenças entre saida6-SRTN-entrada-esperado.txt e saida5-SRTN-entrada-esperado.txt:
+======================================
+proc4 20 20 0						      |	proc4 30 30 0
+proc5 30 30 0						      |	proc5 22 22 0
+======================================
+Diferenças entre saida8-SRTN-entrada-esperado.txt e saida7-SRTN-entrada-esperado.txt:
+======================================
+======================================
+Diferenças entre saida10-SRTN-entrada-esperado.txt e saida9-SRTN-entrada-esperado.txt:
+======================================
+proc4 30 30 0						      |	proc4 20 20 0
+proc5 22 22 0						      |	proc5 30 30 0
+======================================
+Diferenças entre saida12-SRTN-entrada-esperado.txt e saida11-SRTN-entrada-esperado.txt:
+======================================
+======================================
+Diferenças entre saida14-SRTN-entrada-esperado.txt e saida13-SRTN-entrada-esperado.txt:
+======================================
+======================================
+Diferenças entre saida16-SRTN-entrada-esperado.txt e saida15-SRTN-entrada-esperado.txt:
+======================================
+proc3 30 30 0						      |	proc3 20 20 0
+proc4 20 20 0						      |	proc4 30 30 0
+proc5 25 25 0						      |	proc5 22 22 0
+======================================
+Diferenças entre saida18-SRTN-entrada-esperado.txt e saida17-SRTN-entrada-esperado.txt:
+======================================
+======================================
+Diferenças entre saida20-SRTN-entrada-esperado.txt e saida19-SRTN-entrada-esperado.txt:
+======================================
+proc3 30 30 0						      |	proc3 20 20 0
+proc5 22 22 0						      |	proc5 30 30 0
+======================================
+Diferenças entre saida22-SRTN-entrada-esperado.txt e saida21-SRTN-entrada-esperado.txt:
+======================================
+proc4 20 20 0						      |	proc4 30 30 0
+proc5 30 30 0						      |	proc5 22 22 0
+======================================
+Diferenças entre saida24-SRTN-entrada-esperado.txt e saida23-SRTN-entrada-esperado.txt:
+======================================
+proc4 20 20 0						      |	proc4 30 30 0
+proc5 30 30 0						      |	proc5 22 22 0
+======================================
+Diferenças entre saida26-SRTN-entrada-esperado.txt e saida25-SRTN-entrada-esperado.txt:
+======================================
+proc4 20 20 0						      |	proc4 30 30 0
+proc5 30 30 0						      |	proc5 22 22 0
+======================================
+Diferenças entre saida28-SRTN-entrada-esperado.txt e saida27-SRTN-entrada-esperado.txt:
+======================================
+12							      <
+proc1 20 20 0						      <
+proc2 20 20 0						      <
+proc3 20 20 0						      <
+proc4 20 20 0						      <
+proc5 30 30 0						      <
+proc6 30 30 0						      <
+proc7 30 30 0						      <
+proc8 30 30 0						      <
+proc9 1 3 1						      <
+proc10 1 3 1						      <
+proc11 1 3 1						      <
+proc12 1 3 1						      <
+proc13 2 4 0						      <
+proc14 2 4 0						      <
+proc15 2 4 0						      <
+proc16 2 4 0						      <
+proc18 8 15 0						      <
+proc19 8 15 0						      <
+proc20 8 15 0						      <
+proc21 8 15 0						      <
+proc22 6 13 0						      <
+proc23 6 13 0						      <
+proc24 6 13 0						      <
+proc25 6 13 0						      <
+proc26 1 9 1						      <
+proc27 1 9 1						      <
+proc28 1 9 1						      <
+proc29 1 9 1						      <
+proc30 2 10 1						      <
+proc31 2 10 1						      <
+proc32 2 10 1						      <
+proc33 2 10 1						      <
+======================================
+Diferenças entre saida30-SRTN-entrada-esperado.txt e saida29-SRTN-entrada-esperado.txt:
+======================================
+
+===============================
+ Testando Prioridade (tipo 3)
+-------------------------------
+======================================
+Diferenças entre saida2-Prioridade-entrada-esperado.txt e saida1-Prioridade-entrada-esperado.txt:
+======================================
+======================================
+Diferenças entre saida4-Prioridade-entrada-esperado.txt e saida3-Prioridade-entrada-esperado.txt:
+======================================
+proc1 24 24 0						      |	proc1 25 25 0
+proc6 25 25 0						      |	proc6 24 24 0
+======================================
+Diferenças entre saida6-Prioridade-entrada-esperado.txt e saida5-Prioridade-entrada-esperado.txt:
+======================================
+proc1 25 25 0						      |	proc1 24 24 0
+proc8 24 24 0						      |	proc8 25 25 0
+======================================
+Diferenças entre saida8-Prioridade-entrada-esperado.txt e saida7-Prioridade-entrada-esperado.txt:
+======================================
+proc1 25 25 0						      |	proc1 24 24 0
+proc3 30 30 0						      |	proc3 31 31 0
+proc4 32 32 0						      |	proc4 31 31 0
+proc6 24 24 0						      |	proc6 25 25 0
+proc7 26 26 0						      |	proc7 25 25 0
+======================================
+Diferenças entre saida10-Prioridade-entrada-esperado.txt e saida9-Prioridade-entrada-esperado.txt:
+======================================
+======================================
+Diferenças entre saida12-Prioridade-entrada-esperado.txt e saida11-Prioridade-entrada-esperado.txt:
+======================================
+proc1 25 25 0						      |	proc1 24 24 0
+proc2 27 27 0						      |	proc2 28 28 0
+proc3 31 31 0						      |	proc3 30 30 0
+proc6 24 24 0						      |	proc6 25 25 0
+proc8 25 25 0						      |	proc8 24 24 0
+======================================
+Diferenças entre saida14-Prioridade-entrada-esperado.txt e saida13-Prioridade-entrada-esperado.txt:
+======================================
+proc1 24 24 0						      |	proc1 25 25 0
+proc8 25 25 0						      |	proc8 24 24 0
+======================================
+Diferenças entre saida16-Prioridade-entrada-esperado.txt e saida15-Prioridade-entrada-esperado.txt:
+======================================
+proc1 24 24 0						      |	proc1 25 25 0
+proc2 27 27 0						      |	proc2 28 28 0
+proc3 31 31 0						      |	proc3 30 30 0
+proc6 25 25 0						      |	proc6 24 24 0
+proc7 25 25 0						      |	proc7 24 24 0
+======================================
+Diferenças entre saida18-Prioridade-entrada-esperado.txt e saida17-Prioridade-entrada-esperado.txt:
+======================================
+======================================
+Diferenças entre saida20-Prioridade-entrada-esperado.txt e saida19-Prioridade-entrada-esperado.txt:
+======================================
+proc7 24 24 0						      |	proc7 25 25 0
+proc8 25 25 0						      |	proc8 24 24 0
+======================================
+Diferenças entre saida22-Prioridade-entrada-esperado.txt e saida21-Prioridade-entrada-esperado.txt:
+======================================
+proc1 24 24 0						      |	proc1 25 25 0
+proc6 25 25 0						      |	proc6 24 24 0
+======================================
+Diferenças entre saida24-Prioridade-entrada-esperado.txt e saida23-Prioridade-entrada-esperado.txt:
+======================================
+======================================
+Diferenças entre saida26-Prioridade-entrada-esperado.txt e saida25-Prioridade-entrada-esperado.txt:
+======================================
+proc1 24 24 0						      |	proc1 25 25 0
+proc7 25 25 0						      |	proc7 24 24 0
+======================================
+Diferenças entre saida28-Prioridade-entrada-esperado.txt e saida27-Prioridade-entrada-esperado.txt:
+======================================
+proc3 31 31 0						      |	proc3 30 30 0
+proc5 31 31 0						      |	proc5 32 32 0
+proc6 25 25 0						      |	proc6 26 26 0
+======================================
+Diferenças entre saida30-Prioridade-entrada-esperado.txt e saida29-Prioridade-entrada-esperado.txt:
+======================================
+proc1 24 24 0						      |	proc1 25 25 0
+proc7 25 25 0						      |	proc7 24 24 0
+
+===============================
+ Testando FCFS (tipo 1)
+-------------------------------
+======================================
+Diferenças entre saida2-FCFS-entrada-inesperado.txt e saida1-FCFS-entrada-inesperado.txt:
+======================================
+======================================
+Diferenças entre saida4-FCFS-entrada-inesperado.txt e saida3-FCFS-entrada-inesperado.txt:
+======================================
+======================================
+Diferenças entre saida6-FCFS-entrada-inesperado.txt e saida5-FCFS-entrada-inesperado.txt:
+======================================
+======================================
+Diferenças entre saida8-FCFS-entrada-inesperado.txt e saida7-FCFS-entrada-inesperado.txt:
+======================================
+======================================
+Diferenças entre saida10-FCFS-entrada-inesperado.txt e saida9-FCFS-entrada-inesperado.txt:
+======================================
+======================================
+Diferenças entre saida12-FCFS-entrada-inesperado.txt e saida11-FCFS-entrada-inesperado.txt:
+======================================
+======================================
+Diferenças entre saida14-FCFS-entrada-inesperado.txt e saida13-FCFS-entrada-inesperado.txt:
+======================================
+======================================
+Diferenças entre saida16-FCFS-entrada-inesperado.txt e saida15-FCFS-entrada-inesperado.txt:
+======================================
+======================================
+Diferenças entre saida18-FCFS-entrada-inesperado.txt e saida17-FCFS-entrada-inesperado.txt:
+======================================
+======================================
+Diferenças entre saida20-FCFS-entrada-inesperado.txt e saida19-FCFS-entrada-inesperado.txt:
+======================================
+======================================
+Diferenças entre saida22-FCFS-entrada-inesperado.txt e saida21-FCFS-entrada-inesperado.txt:
+======================================
+======================================
+Diferenças entre saida24-FCFS-entrada-inesperado.txt e saida23-FCFS-entrada-inesperado.txt:
+======================================
+======================================
+Diferenças entre saida26-FCFS-entrada-inesperado.txt e saida25-FCFS-entrada-inesperado.txt:
+======================================
+======================================
+Diferenças entre saida28-FCFS-entrada-inesperado.txt e saida27-FCFS-entrada-inesperado.txt:
+======================================
+======================================
+Diferenças entre saida30-FCFS-entrada-inesperado.txt e saida29-FCFS-entrada-inesperado.txt:
+======================================
+
+===============================
+ Testando SRTN (tipo 2)
+-------------------------------
+./teste.sh, linha 17:  7714 Falha de segmentação  (imagem do núcleo gravada) $EXECUTAVEL $tipo "${arquivo}" "saida${i}-${NOMES[$tipo]}-$arquivo"
+./teste.sh, linha 17:  7762 Falha de segmentação  (imagem do núcleo gravada) $EXECUTAVEL $tipo "${arquivo}" "saida${i}-${NOMES[$tipo]}-$arquivo"
+======================================
+Diferenças entre saida2-SRTN-entrada-inesperado.txt e saida1-SRTN-entrada-inesperado.txt:
+======================================
+proc2 15 15 0						      |	proc2 16 16 0
+proc4 16 16 0						      |	proc4 15 15 0
+======================================
+Diferenças entre saida4-SRTN-entrada-inesperado.txt e saida3-SRTN-entrada-inesperado.txt:
+======================================
+proc3 16 16 0						      |	proc3 15 15 0
+proc4 15 15 0						      |	proc4 16 16 0
+======================================
+Diferenças entre saida6-SRTN-entrada-inesperado.txt e saida5-SRTN-entrada-inesperado.txt:
+======================================
+4							      <
+proc1 16 16 0						      <
+proc2 30 30 0						      <
+proc3 16 16 0						      <
+proc4 15 15 0						      <
+proc5 28 28 0						      <
+proc6 29 29 0						      <
+proc7 30 30 0						      <
+proc8 30 30 0						      <
+proc10 1 13 1						      <
+proc11 1 13 1						      <
+proc12 1 13 1						      <
+proc13 1 13 1						      <
+proc14 2 14 1						      <
+proc15 2 14 1						      <
+proc16 2 14 1						      <
+======================================
+Diferenças entre saida8-SRTN-entrada-inesperado.txt e saida7-SRTN-entrada-inesperado.txt:
+======================================
+4							      <
+proc1 16 16 0						      <
+proc2 15 15 0						      <
+proc3 16 16 0						      <
+proc4 16 16 0						      <
+proc5 29 29 0						      <
+proc6 30 30 0						      <
+proc7 30 30 0						      <
+proc8 30 30 0						      <
+proc10 1 13 1						      <
+proc11 1 13 1						      <
+proc12 1 13 1						      <
+proc13 1 13 1						      <
+proc14 2 14 1						      <
+proc15 2 14 1						      <
+proc16 2 14 1						      <
+======================================
+Diferenças entre saida10-SRTN-entrada-inesperado.txt e saida9-SRTN-entrada-inesperado.txt:
+======================================
+proc1 15 15 0						      |	proc1 16 16 0
+proc2 16 16 0						      |	proc2 15 15 0
+======================================
+Diferenças entre saida12-SRTN-entrada-inesperado.txt e saida11-SRTN-entrada-inesperado.txt:
+======================================
+proc1 16 16 0						      |	proc1 15 15 0
+proc2 15 15 0						      |	proc2 16 16 0
+======================================
+Diferenças entre saida14-SRTN-entrada-inesperado.txt e saida13-SRTN-entrada-inesperado.txt:
+======================================
+proc1 15 15 0						      |	proc1 16 16 0
+proc2 16 16 0						      |	proc2 15 15 0
+======================================
+Diferenças entre saida16-SRTN-entrada-inesperado.txt e saida15-SRTN-entrada-inesperado.txt:
+======================================
+proc1 16 16 0						      |	proc1 15 15 0
+proc2 15 15 0						      |	proc2 16 16 0
+======================================
+Diferenças entre saida18-SRTN-entrada-inesperado.txt e saida17-SRTN-entrada-inesperado.txt:
+======================================
+proc1 16 16 0						      |	proc1 15 15 0
+proc2 15 15 0						      |	proc2 16 16 0
+======================================
+Diferenças entre saida20-SRTN-entrada-inesperado.txt e saida19-SRTN-entrada-inesperado.txt:
+======================================
+proc2 15 15 0						      |	proc2 16 16 0
+proc3 16 16 0						      |	proc3 15 15 0
+======================================
+Diferenças entre saida22-SRTN-entrada-inesperado.txt e saida21-SRTN-entrada-inesperado.txt:
+======================================
+proc1 16 16 0						      |	proc1 15 15 0
+proc2 15 15 0						      |	proc2 16 16 0
+======================================
+Diferenças entre saida24-SRTN-entrada-inesperado.txt e saida23-SRTN-entrada-inesperado.txt:
+======================================
+proc1 16 16 0						      |	proc1 15 15 0
+proc2 15 15 0						      |	proc2 16 16 0
+======================================
+Diferenças entre saida26-SRTN-entrada-inesperado.txt e saida25-SRTN-entrada-inesperado.txt:
+======================================
+proc1 16 16 0						      |	proc1 15 15 0
+proc4 15 15 0						      |	proc4 16 16 0
+======================================
+Diferenças entre saida28-SRTN-entrada-inesperado.txt e saida27-SRTN-entrada-inesperado.txt:
+======================================
+proc1 16 16 0						      |	proc1 15 15 0
+proc2 15 15 0						      |	proc2 16 16 0
+======================================
+Diferenças entre saida30-SRTN-entrada-inesperado.txt e saida29-SRTN-entrada-inesperado.txt:
+======================================
+proc1 16 16 0						      |	proc1 15 15 0
+proc2 15 15 0						      |	proc2 16 16 0
+
+===============================
+ Testando Prioridade (tipo 3)
+-------------------------------
+======================================
+Diferenças entre saida2-Prioridade-entrada-inesperado.txt e saida1-Prioridade-entrada-inesperado.txt:
+======================================
+======================================
+Diferenças entre saida4-Prioridade-entrada-inesperado.txt e saida3-Prioridade-entrada-inesperado.txt:
+======================================
+proc2 28 28 0						      |	proc2 29 29 0
+proc3 29 29 0						      |	proc3 28 28 0
+======================================
+Diferenças entre saida6-Prioridade-entrada-inesperado.txt e saida5-Prioridade-entrada-inesperado.txt:
+======================================
+proc1 29 29 0						      |	proc1 28 28 0
+proc4 28 28 0						      |	proc4 29 29 0
+======================================
+Diferenças entre saida8-Prioridade-entrada-inesperado.txt e saida7-Prioridade-entrada-inesperado.txt:
+======================================
+proc1 29 29 0						      |	proc1 28 28 0
+proc2 28 28 0						      |	proc2 29 29 0
+proc5 30 30 0						      |	proc5 29 29 0
+proc6 29 29 0						      |	proc6 30 30 0
+======================================
+Diferenças entre saida10-Prioridade-entrada-inesperado.txt e saida9-Prioridade-entrada-inesperado.txt:
+======================================
+======================================
+Diferenças entre saida12-Prioridade-entrada-inesperado.txt e saida11-Prioridade-entrada-inesperado.txt:
+======================================
+======================================
+Diferenças entre saida14-Prioridade-entrada-inesperado.txt e saida13-Prioridade-entrada-inesperado.txt:
+======================================
+proc2 28 28 0						      |	proc2 29 29 0
+proc4 29 29 0						      |	proc4 28 28 0
+======================================
+Diferenças entre saida16-Prioridade-entrada-inesperado.txt e saida15-Prioridade-entrada-inesperado.txt:
+======================================
+proc1 28 28 0						      |	proc1 29 29 0
+proc3 29 29 0						      |	proc3 28 28 0
+proc5 29 29 0						      |	proc5 30 30 0
+proc6 30 30 0						      |	proc6 29 29 0
+======================================
+Diferenças entre saida18-Prioridade-entrada-inesperado.txt e saida17-Prioridade-entrada-inesperado.txt:
+======================================
+======================================
+Diferenças entre saida20-Prioridade-entrada-inesperado.txt e saida19-Prioridade-entrada-inesperado.txt:
+======================================
+proc2 28 28 0						      |	proc2 29 29 0
+proc3 29 29 0						      |	proc3 28 28 0
+proc5 30 30 0						      |	proc5 29 29 0
+proc6 29 29 0						      |	proc6 30 30 0
+======================================
+Diferenças entre saida22-Prioridade-entrada-inesperado.txt e saida21-Prioridade-entrada-inesperado.txt:
+======================================
+proc1 28 28 0						      |	proc1 29 29 0
+proc2 29 29 0						      |	proc2 28 28 0
+proc5 29 29 0						      |	proc5 30 30 0
+proc6 30 30 0						      |	proc6 29 29 0
+======================================
+Diferenças entre saida24-Prioridade-entrada-inesperado.txt e saida23-Prioridade-entrada-inesperado.txt:
+======================================
+proc1 28 28 0						      |	proc1 29 29 0
+proc2 29 29 0						      |	proc2 28 28 0
+======================================
+Diferenças entre saida26-Prioridade-entrada-inesperado.txt e saida25-Prioridade-entrada-inesperado.txt:
+======================================
+proc1 28 28 0						      |	proc1 29 29 0
+proc3 29 29 0						      |	proc3 28 28 0
+======================================
+Diferenças entre saida28-Prioridade-entrada-inesperado.txt e saida27-Prioridade-entrada-inesperado.txt:
+======================================
+proc1 29 29 0						      |	proc1 28 28 0
+proc2 28 28 0						      |	proc2 29 29 0
+======================================
+Diferenças entre saida30-Prioridade-entrada-inesperado.txt e saida29-Prioridade-entrada-inesperado.txt:
+======================================
+proc1 28 28 0						      |	proc1 29 29 0
+proc3 29 29 0						      |	proc3 28 28 0
+proc5 29 29 0						      |	proc5 30 30 0
+proc7 30 30 0						      |	proc7 29 29 0
+

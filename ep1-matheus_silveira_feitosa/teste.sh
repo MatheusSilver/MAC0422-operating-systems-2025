@@ -14,10 +14,10 @@ for arquivo in "${ARQUIVO_TRACE[@]}"; do
         echo "==============================="
         echo " Testando ${NOMES[$tipo]} (tipo $tipo)"
         echo "-------------------------------"
-        for i in $(seq 2); do
+        for i in $(seq 30); do
             $EXECUTAVEL $tipo "${arquivo}" "saida${i}-${NOMES[$tipo]}-$arquivo"
         done
-        for i in $(seq 2); do
+        for i in $(seq 30); do
             if [ $((i % 2)) -eq 0 ]; then
                 ./compara.sh "saida${i}-${NOMES[$tipo]}-$arquivo" "saida$((i-1))-${NOMES[$tipo]}-$arquivo"
             fi
