@@ -49,7 +49,7 @@ void check_startup(int args, char* argv[]){
 void init(char* argv[]){
     SchedulerModel schedulerID = atoi(argv[1]);
 
-    /* existia uma função de sys/sysinfo.h entretanto, acho que seja preferível usar a syscall diretamente. */
+    /* existia uma função de sys/sysinfo.h entretanto, acho que seja preferível usar a função de unistd que já é usada antes no uspsh. */
     AVAILABLE_CORES = sysconf(_SC_NPROCESSORS_ONLN);
     init_scheduler_simulation(schedulerID, argv[2], argv[3]);
 }
