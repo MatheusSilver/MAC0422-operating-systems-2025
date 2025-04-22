@@ -327,13 +327,16 @@ void consume_execution_time(SimulatedProcessData *process) {
 }
 
 void handle_process_termination_status(SimulatedProcessUnit *currentUnit) {
+    long cpu;
     /* Se o processo sair do seu loop de execução, vemos se foi por zerarmos o tempo restante*/
     /* Ou caso contrário, atualizamos seu status e informamos ao escalonador que o processo foi interrompido. */
     if (currentUnit->processData->remainingTime <= 0) {
         double endTime = get_elapsed_time_from(INITIAL_SIMULATION_TIME);
         finish_process(currentUnit->processData, endTime);
         P(systemQueue.runningQueueMutex);
-        systemQueue.runningQueue[currentUnit->cpuID] = NULL;
+        cpu = currentUnit->cpuID;
+        currentUnit->cpuID = -1;
+        if (systemQueue.runningQueue[cpu] == currentUnit) systemQueue.runningQueue[cpu] = NULL;
         pthread_cond_signal(&systemQueue.wakeUpScheduler);   
         finishedProcesses++;
         V(systemQueue.runningQueueMutex);
@@ -392,14 +395,13 @@ void dispatch_process(SimulatedProcessUnit *unit) {
 
 void preempt_process(SimulatedProcessUnit *unit) {
     /* Interrompe o processo e desvincula o processo da CPU previamente destinada a ele. */
-    long cpu;
-    cpu = unit->cpuID;
+    long cpu = unit->cpuID;
+    unit->cpuID = -1;
     pause_process(unit);
     enqueue(&systemQueue, unit);
     /* Teste de sanidade para garantirmos que nenhum outro processo irá tentar limpar outro que não seja si próprio da CPU. */
     /* Em geral não é usado, mas é só uma garantia. */
     if (systemQueue.runningQueue[cpu] == unit) systemQueue.runningQueue[cpu] = NULL;
-    unit->cpuID = -1;
 }
 
 void finish_process(SimulatedProcessData * process, double finishTime){
@@ -449,9 +451,10 @@ SimulatedProcessUnit* get_longest_running_process(CoreQueueManager *this) {
 bool wait_for_finish_iminence() {
     int i;
     SimulatedProcessUnit *shortest = NULL;
-    double minRemaining = systemQueue.runningQueue[0]->processData->remainingTime;
+    /* Nenhum processo vai ter tempo maior que isso por definição do EP. */
+    double minRemaining = 120;
 
-    for (i = 1; i < AVAILABLE_CORES; i++) {
+    for (i = 0; i < AVAILABLE_CORES; i++) {
         SimulatedProcessUnit *unit = systemQueue.runningQueue[i];
         if (unit != NULL) {
             double remaining = unit->processData->remainingTime;
@@ -606,14 +609,14 @@ SimulatedProcessUnit* peek_queue_front(CoreQueueManager *this) {
 }
 
 void destroy_manager(CoreQueueManager *this) {
-    free(this->readyQueue);
-    free(this->runningQueue);
-
     pthread_mutex_destroy(&this->readyQueueMutex);
     pthread_mutex_destroy(&this->runningQueueMutex);
     pthread_mutex_destroy(&this->schedulerMutex);
     pthread_cond_destroy(&this->cond);
     pthread_cond_destroy(&this->wakeUpScheduler);
+    
+    free(this->readyQueue);
+    free(this->runningQueue);
 }
 
 /* >>>>>>>>>>>>>>>>>>>>>>>>> UTILIDADES DO STRUCT <<<<<<<<<<<<<<<<<<<<<<<<< */
@@ -657,7 +660,7 @@ void update_priority(SimulatedProcessData *process, bool isInitial) {
             else if (overTime > PRIORITY_RANGE) set_process_priority(process, MIN_PRIORITY);
             else                                set_process_priority(process, overTime  + MAX_PRIORITY);                             
         } else {
-            if (process->numPreemptions >= MAX_PREEMPTIONS_UNTIL_PROMOTION){
+            if (process->numPreemptions >= MAX_PREEMPTIONS_UNTIL_DEMOTION){
                 process->priority++;
                 process->numPreemptions = 0;
                 if (process->priority < MAX_PRIORITY) process->priority = MAX_PRIORITY;
@@ -669,8 +672,11 @@ void update_priority(SimulatedProcessData *process, bool isInitial) {
 int get_process_quantum(int priority){
     const int PRIORITY_RANGE = get_priority_range();
     const int QUANTUM_RANGE  = get_quantum_range();
-    double angularCoefficient = (double)((priority - MAX_PRIORITY) / PRIORITY_RANGE);
-    return MIN_QUANTUM + customRound(angularCoefficient * QUANTUM_RANGE);
+    double angularCoefficient = 1.0 - ((double)(priority - MAX_PRIORITY) / PRIORITY_RANGE);
+    /* Poderiamos ter arredondado, mas o objetivo é dar 3 quantums APENAS para quem realmente precisa */
+                    /* Isto é, ou roda o máximo o máximo sem parar, ou não roda */
+            /* Por isso, na esmagadora maioria dos casos, os processos recebem 1 ou 2 quantums*/
+    return MIN_QUANTUM + (int)(angularCoefficient * QUANTUM_RANGE+0.06);
 }
 
 /* >>>>>>>>>>>>>>>>>>>>>>>>> UTILIDADES DE ARQUIVO <<<<<<<<<<<<<<<<<<<<<<<<< */

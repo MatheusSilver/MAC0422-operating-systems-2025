@@ -19,9 +19,10 @@
 /* Usado para a manipulação das threads */
 #include <pthread.h>
 
-/* Usado para a syscall sysconf(_SC_NPROCESSORS_ONLN) */
+/* Usado para a função sysconf(_SC_NPROCESSORS_ONLN) */
 /* Que retorna o número de CPU's ativas na máquina */
-/* Optamos por uma syscall que é garantido existir em qualquer sistema Linux*/
+/* Por mim, usava sched_getaffinity, que é uma syscall */
+/* Mas depois do ultimato, usamos sysconf que pelo menos, faz parte da especificação POSIX */
 #include <unistd.h>
 
 /* Usada para o controle de tempo dos processos */
@@ -67,7 +68,7 @@
 #define MAX_QUANTUM                     3
 
 /* Número máximo de preempções até a promoção de um processo no escalonamento por prioridade */
-#define MAX_PREEMPTIONS_UNTIL_PROMOTION 3
+#define MAX_PREEMPTIONS_UNTIL_DEMOTION 2
 
 /* Modelos de escalonamento */
 typedef enum {
