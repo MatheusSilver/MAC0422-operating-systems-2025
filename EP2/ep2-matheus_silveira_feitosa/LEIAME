@@ -1,0 +1,26 @@
+Para compilar o executável, primeiramente devemos garantir que temos as dependências necessárias, sendo elas:
+
+1- POSIX threads 
+
+Caso ela não tenha vindo por padrão na sua distribuição Linux, podemos instalá-la fazendo (Em Debian ou derivados):
+> sudo apt install libc6-dev
+
+Com isso, podemos compilar, o programa usando o Makefile. Para isso, basta executar o comando make no mesmo diretório que o arquivo Makefile.
+
+Ou, podemos compilar ambos os programas manualmente fazendo:
+
+> gcc ep2.c -o ep2 -pthread
+
+E para executar o simulador compilado, basta fazer:
+
+> ./ep2 <d> <k> <i/e> -debug (opcional)
+
+onde:
+<d> é um número inteiro representando o tamanho da pista simulada em metros
+<k> é um número inteiro representando a quantidade de ciclistas nesta pista.
+<i/e> é o modo de tratamento de acesso a pista.
+    i = Ingênuo (A pista é travada por um único mutex global)
+    e = "Eficiente" A pista possui diversos mutexes um em cada posição permitindo que mais faixas possam
+        ser processadas simultâneamente.
+
+já o -debug é opcional, e faz o programa imprimir a cada instante de tempo, a situação da pista com as posições dos ciclistas naquele instante.

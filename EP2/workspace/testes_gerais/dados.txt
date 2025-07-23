@@ -1,0 +1,52 @@
+metrics_d100_k100_pe.txt: Tempo médio = 13.617s [13.191s; 14.042s], Memória média = 3354kB [2902kB; 3805kB]
+
+
+metrics_d100_k100_pi.txt: Tempo médio = 14.088s [ 13.702; 14.474 ], Memória média = 3584kB [ 3036.305; 4131.695 ]
+
+
+metrics_d100_k200_pe.txt: Tempo médio = 32.591s [31.646s; 33.536s], Memória média = 5440kB [4821kB; 6059kB]
+
+
+metrics_d100_k200_pi.txt: Tempo médio = 32.985s [32.036s; 33.934s], Memória média = 5704kB [5083kB; 6325kB]
+
+
+metrics_d100_k50_pe.txt: Tempo médio = 5.394s [5.191s; 5.596s], Memória média = 2718kB [2296kB; 3140kB]
+
+
+metrics_d100_k50_pi.txt: Tempo médio = 5.527s [5.276s; 5.779s], Memória média = 2846kB [2365kB; 3327kB]
+
+
+metrics_d200_k100_pe.txt: Tempo médio = 27.326s [26.442s; 28.210s], Memória média = 3255kB [2843kB; 3667kB]
+
+
+metrics_d200_k100_pi.txt: Tempo médio = 27.575s [26.559s; 28.592s], Memória média = 3323kB [2870kB; 3775kB]
+
+
+metrics_d200_k200_pe.txt: Tempo médio = 66.964s [65.602s; 68.326s], Memória média = 5970kB [5331kB; 6608kB]
+
+
+metrics_d200_k200_pi.txt: Tempo médio = 66.900s [65.649s; 68.151s], Memória média = 5738kB [5111kB; 6366kB]
+
+
+metrics_d200_k50_pe.txt: Tempo médio = 10.468s [9.947s; 10.990s], Memória média = 3210kB [2619kB; 3801kB]
+
+
+metrics_d200_k50_pi.txt: Tempo médio = 10.707s [10.293s; 11.121s], Memória média = 2677kB [2305kB; 3048kB]
+
+
+metrics_d400_k100_pe.txt: Tempo médio = 54.653s [52.916s; 56.390s], Memória média = 3468kB [2975kB; 3962kB]
+
+
+metrics_d400_k100_pi.txt: Tempo médio = 54.725s [52.955s; 56.495s], Memória média = 3839kB [3235kB; 4443kB]
+
+
+metrics_d400_k200_pe.txt: Tempo médio = 138.833s [136.096s; 141.570s], Memória média = 5031kB [4501kB; 5560kB]
+
+
+metrics_d400_k200_pi.txt: Tempo médio = 139.477s [136.084s; 142.870s], Memória média = 5407kB [4793kB; 6022kB]
+
+
+metrics_d400_k50_pe.txt: Tempo médio = 21.297s [20.598s; 21.997s], Memória média = 2857kB [2355kB; 3359kB]
+
+
+metrics_d400_k50_pi.txt: Tempo médio = 22.257s [21.586s; 22.929s], Memória média = 2859kB [2374kB; 3343kB]
