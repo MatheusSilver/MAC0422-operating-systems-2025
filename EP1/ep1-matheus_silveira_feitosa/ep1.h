@@ -57,7 +57,7 @@
 #define MAX_LINE_SIZE                   90
 
 /* Número máximo de processos simulados */
-#define MAX_SIMULATED_PROCESSES         50
+#define MAX_SIMULATED_PROCESSES         1024 /* Pequeno fix apontado pelo Ivan para os testes com 150 processos. */
 
 /* Separador de dados padrão das linhas do arquivo */
 #define FILE_SEPARATOR                  " "
