@@ -1,0 +1,24 @@
+As únicas dependências deste programa são as próprias bibliotecas padrão do gcc, com isso nenhuma outra biblioteca adicional é necessária
+
+Com isso, podemos compilar, o programa usando o Makefile. Bastando executar o comando make no mesmo diretório que o arquivo Makefile.
+
+Ou, podemos compilar o programa manualmente fazendo:
+
+> gcc ep3.c -o ep3
+
+E para executar o simulador compilado, basta fazer:
+
+> ./ep3 <n> <nome do arquivo PGM de entrada> <nome do arquivo de trace> <nome do arquivo PGM de saida>
+
+onde:
+<n> é uma indicação do algoritmo a ser simulado:
+    1. First Fit
+    2. Next Fit
+    3. Best Fit
+    4. Worst Fit
+
+<nome do arquivo PGM de entrada> o arquivo PGM de entrada representando o estado inicial da memória a ser inicialmente tomada como referência.
+
+<nome do arquivo de trace> Arquivo contendo pedidos de alocação e compactação em posições específicas da memória
+
+<nome do arquivo PGM de saida> o nome do arquivo PGM que conterá o estado final da memória após a simulação.

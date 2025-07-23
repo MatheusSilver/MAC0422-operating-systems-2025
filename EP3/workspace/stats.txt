@@ -1,0 +1,18 @@
+Estatísticas (95% CI, t=2.045, df=29):
+
+FIRST_FIT  | trace-firstfit   | mean = 4.476646 s  | CI95% = ±0.364636 s | 0
+FIRST_FIT  | trace-nextfit    | mean = 5.619207 s  | CI95% = ±0.391687 s | 0 
+FIRST_FIT  | trace-bestfit    | mean = 13.11109 s  | CI95% = ±0.486453 s | 2
+FIRST_FIT  | trace-worstfit   | mean = 6.869281 s  | CI95% = ±0.407333 s | 5
+NEXT_FIT   | trace-firstfit   | mean = 0.879151 s  | CI95% = ±0.016298 s | 5
+NEXT_FIT   | trace-nextfit    | mean = 0.520479 s  | CI95% = ±0.103102 s | 0
+NEXT_FIT   | trace-bestfit    | mean = 0.812451 s  | CI95% = ±0.065804 s | 3
+NEXT_FIT   | trace-worstfit   | mean = 1.206998 s  | CI95% = ±0.022303 s | 7
+BEST_FIT   | trace-firstfit   | mean = 10.66389 s  | CI95% = ±0.491286 s | 2
+BEST_FIT   | trace-nextfit    | mean = 7.428463 s  | CI95% = ±0.422370 s | 0
+BEST_FIT   | trace-bestfit    | mean = 39.84000 s  | CI95% = ±0.540359 s | 0
+BEST_FIT   | trace-worstfit   | mean = 13.76429 s  | CI95% = ±0.493683 s | 5
+WORST_FIT  | trace-firstfit   | mean = 10.25839 s  | CI95% = ±0.444481 s | 11
+WORST_FIT  | trace-nextfit    | mean = 7.359592 s  | CI95% = ±0.398734 s | 0
+WORST_FIT  | trace-bestfit    | mean = 39.64387 s  | CI95% = ±0.478225 s | 12
+WORST_FIT  | trace-worstfit   | mean = 13.92602 s  | CI95% = ±0.474191 s | 0
