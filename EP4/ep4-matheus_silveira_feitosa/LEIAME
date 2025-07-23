@@ -1,0 +1,52 @@
+As únicas dependendências destes programas são o gnuplot e os pacotes dateutils, lsof e também, do POSIX Threads, os demais já vem instalados numa instalação padrão Linux.
+
+Para as demais dependências, podemos instalar elas fazendo:
+
+1- dateutils
+    > sudo apt-get install dateutils
+
+    Um adendo sobre o pacote dateutils, é que este pode variar consideravelmente entre distribuições Linux, com isso
+    caso você esteja em uma distribuição arch por exemplo, pode ser necessário substituir na linha 289 de:
+    echo "$(dateutils.ddiff "$start" "$end" -f "%0M:%0S")"
+    para:
+    echo "$(datediff "$start" "$end" -f "%0M:%0S")"
+
+    Sendo este o único lugar onde esse pacote é utilizado, e portanto o único lugar que poderá ser preciso modificar.
+
+
+2- POSIX threads:
+        Caso ela não tenha vindo por padrão na sua distribuição Linux, podemos instalá-la fazendo (Em Debian ou derivados):
+    > sudo apt install libc6-dev
+
+3- GNUPlot:
+    > sudo apt-get install gnuplot
+
+4- lsof
+    > sudo apt-get install lsof
+
+    Algumas máquinas (A minha por exemplo não veio com isso.)
+
+Com estas dependências instaladas, podemos agora executar o script. Lembrando que o foco do teste, são os servidores, portanto, é preciso ter uma pasta dentro do diretório onde se encontra o script de testes nomeada como: 
+ep4-clientes+servidores
+
+E dentro dela, esperamos ter os arquivos:
+    ep4-cliente-inet.c
+    ep4-cliente-unix.c
+    ep4-servidor-inet_muxes.c
+    ep4-servidor-inet_processos.c
+    ep4-servidor-inet_threads.c
+    ep4-servidor-unix_threads.c
+
+Com isso, podemos executar o script, e obter os resultados da comparação dos diversos servidores para uma dada quantidade de clientes com diferentes quantidades de dados tranferidos ao executar, no mesmo diretório do script, o comando:
+
+    > ./ep4 <quantidade de clientes> <tamanho do arquivo 1> <tamanho do arquivo 2> [<tamanho do arquivo 3> ... <tamanho do arquivo n>]
+
+onde:
+<quantidade de clientes> é um número inteiro indicando quantas conexões com clientes nosso servidor deverá simular para a comunicação.
+
+<tamanho do arquivo 1> <tamanho do arquivo 2> São dois argumentos obrigatórios que dizem respeito a duas quantidades de dados a serem transmitidas na simulação, são dados por numeros inteiros e geram arquivos de teste de transmissão em MegaBytes.
+
+[<tamanho do arquivo 3> ... <tamanho do arquivo n>] São os demais parâmetros opcionais contendo outros tamanhos de quantidades de dados a serem transmitidas.
+
+LINK DO VÍDEO:
+Eles são secretos shhhhhhhhhhhhhhhhhhhh
