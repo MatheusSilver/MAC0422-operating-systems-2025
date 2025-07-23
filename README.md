@@ -1,11 +1,11 @@
-# Exercícios-Programa desenvolvidos em MAC0422 (Sistemas Operacionais)
+# Exercícios-Programa / MAC0422 (Sistemas Operacionais)
 
 Estes programas, com exceção de alguns devidamente mencionados na seção do EP4, foram desenvolvidos por **Matheus Silveira Feitosa**  
 Instituto de Matemática e Estatística da Universidade de São Paulo (IME-USP)
 
 ## Índice
 
-- [Exercícios-Programa desenvolvidos em MAC0422 (Sistemas Operacionais)](#exercícios-programa-desenvolvidos-em-mac0422-sistemas-operacionais)
+- [Exercícios-Programa / MAC0422 (Sistemas Operacionais)](#exercícios-programa--mac0422-sistemas-operacionais)
   - [Índice](#índice)
   - [Descrição do Repositório](#descrição-do-repositório)
     - [Geral](#geral)
